@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="도란도란(부모 목소리 동화 서비스)이 지금 돌아가는 구성과 핵심 흐름을 한 장에.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>도란도란 시스템 지도</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 레이아웃: 위에 한 장짜리 시스템 지도(SVG, 좁으면 가로 스크롤) → 아래에 흐름 재생 패널과 선택한 구성요소 설명. 앱 화면 초안의 '겹친 종이' 질감 */
+:root {
+  --paper: #FFF8E8; --panel: #FFF0C7; --card: #FFFFFF; --ink: #654125; --ink2: #7A5C44; --line: #E8D5B7;
+  --butter: #FFE6A5; --sky: #BFE2F8; --mint: #B9E8D3; --pink: #FAD4D4; --peach: #FFC09A;
+  --accent: #9A4A20; --ok: #2E6B44; --part: #9A6A00; --todo: #8A7F76; --hi: #E2572C;
+  --display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #241A13; --panel: #2F2219; --card: #33261C; --ink: #F3E3CC; --ink2: #CDB79B; --line: #4A3828;
+  --butter: #5A4520; --sky: #1F3B4F; --mint: #1E4335; --pink: #4C2A2A; --peach: #5A3622;
+  --accent: #F0A273; --ok: #7FD3A0; --part: #E7C062; --todo: #A89A8C; --hi: #FF8A5B; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --paper: #241A13; --panel: #2F2219; --card: #33261C; --ink: #F3E3CC; --ink2: #CDB79B; --line: #4A3828;
+  --butter: #5A4520; --sky: #1F3B4F; --mint: #1E4335; --pink: #4C2A2A; --peach: #5A3622;
+  --accent: #F0A273; --ok: #7FD3A0; --part: #E7C062; --todo: #A89A8C; --hi: #FF8A5B; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 4vw, 36px); line-height: 1.2; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--ink2); max-width: 68ch; }
+.meta { font-family: var(--mono); font-size: 12px; color: var(--ink2); letter-spacing: .02em; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--ink2); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1.5px solid var(--ink); }
+.swatch { width: 18px; height: 12px; border-radius: 3px; border: 1.5px solid var(--ink); display: inline-block; }
+
+.map { background: var(--panel); border: 2px solid var(--ink); border-radius: 18px; box-shadow: 5px 6px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.map svg { display: block; min-width: 1100px; width: 100%; height: auto; }
+
+.flows { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 820px) { .flows { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--card); border: 2px solid var(--ink); border-radius: 16px; padding: 18px 18px 16px; min-width: 0;
+  box-shadow: 4px 5px 0 color-mix(in srgb, var(--ink) 16%, transparent); }
+.box h2 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 0 0 10px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.tabs button { font: inherit; font-size: 14px; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--butter); font-weight: 700; }
+.tabs button:focus-visible, .ctl:focus-visible { outline: 3px solid var(--hi); outline-offset: 2px; }
+ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: s; }
+ol.steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; align-items: start; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+ol.steps li::before { counter-increment: s; content: counter(s); font-family: var(--mono); font-size: 12px; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; border: 1.5px solid var(--ink); background: var(--paper); }
+ol.steps li.on { background: color-mix(in srgb, var(--hi) 14%, transparent); }
+ol.steps li.on::before { background: var(--hi); color: var(--card); border-color: var(--hi); }
+.ctlrow { display: flex; gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+.ctl { font: inherit; font-size: 13px; color: var(--ink); background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; padding: 4px 12px; cursor: pointer; }
+.hint { font-size: 13px; color: var(--ink2); margin: 0; }
+.detail .chip { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1.5px solid currentColor; margin-left: 6px; vertical-align: middle; }
+.detail dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 10px 0 0; font-size: 14px; }
+.detail dt { color: var(--ink2); }
+.detail dd { margin: 0; overflow-wrap: anywhere; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; }
+.notes { display: grid; gap: 6px; font-size: 14px; color: var(--ink2); }
+.notes p { margin: 0; }
+.themebtn { justify-self: start; }
+
+/* SVG */
+.grp rect { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.grp text { font-family: var(--display); font-size: 15px; fill: var(--ink); }
+.grp .gsub { font-family: var(--mono); font-size: 11px; fill: var(--ink2); }
+.node { cursor: pointer; }
+.node rect.body { stroke: var(--ink); stroke-width: 2; }
+.node rect.shadow { fill: var(--ink); opacity: .16; }
+.node .t { font-family: var(--display); font-size: 16px; fill: var(--ink); }
+.node .s { font-family: var(--body); font-size: 12px; fill: var(--ink2); }
+.node .k { font-family: var(--mono); font-size: 10.5px; fill: var(--ink2); }
+.node:hover rect.body, .node:focus rect.body { stroke-width: 3; }
+.node:focus { outline: none; }
+.node.todo rect.body { stroke-dasharray: 6 4; }
+.node.todo .t, .node.todo .s { opacity: .85; }
+.node.sel rect.body { stroke: var(--hi); stroke-width: 3.5; }
+.node.dim { opacity: .35; }
+.edge path { fill: none; stroke: var(--ink2); stroke-width: 1.8; }
+.edge.dash path { stroke-dasharray: 6 5; }
+.edge text { font-family: var(--body); font-size: 11.5px; fill: var(--ink2); paint-order: stroke; stroke: var(--panel); stroke-width: 4px; stroke-linejoin: round; }
+.edge.on path { stroke: var(--hi); stroke-width: 3; }
+.edge.on text { fill: var(--hi); font-weight: 700; }
+.edge.dim { opacity: .2; }
+.bucket rect { fill: var(--card); stroke: var(--ink); stroke-width: 1.5; }
+.bucket text { font-family: var(--mono); font-size: 11px; fill: var(--ink); }
+.bucket .bs { font-family: var(--body); font-size: 11px; fill: var(--ink2); }
+.status { font-family: var(--mono); font-size: 11px; }
+@media (prefers-reduced-motion: no-preference) { .edge path, .node rect.body { transition: stroke .2s, stroke-width .2s; } .edge, .node { transition: opacity .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="meta">doran-doran · 2026-11-08 기준 · 실제로 돌고 있는 구성 (목표 구성은 docs/infrastructure.md)</span>
+    <h1>도란도란 시스템 지도</h1>
+    <p class="lede">부모 목소리로 동화를 읽어 주는 서비스가 지금 어떻게 돌아가는지. 앱은 API에만 말을 걸고, 녹음과 생성된 소리는 S3 서명 URL로 직접 오가며, GPU 작업은 디스패처가 Modal에 맡긴다. 구성요소를 누르면 설명이, 아래 흐름을 고르면 순서대로 경로가 켜진다.</p>
+    <div class="legend" aria-label="범례">
+      <span><i class="dot" style="background:var(--ok)"></i>✅ 구현·동작</span>
+      <span><i class="dot" style="background:var(--part)"></i>🟡 부분·mock·dev 전용</span>
+      <span><i class="dot" style="background:var(--todo)"></i>⬜ 계획 (점선 상자 — 지금 없지만 필요한 것)</span>
+      <span><i class="swatch" style="background:var(--butter)"></i>클라이언트</span>
+      <span><i class="swatch" style="background:var(--sky)"></i>서버</span>
+      <span><i class="swatch" style="background:var(--mint)"></i>GPU</span>
+      <span><i class="swatch" style="background:var(--pink)"></i>데이터</span>
+      <span>— 요청 · ‐ ‐ 서명 URL로 직접</span>
+    </div>
+  </header>
+
+  <div class="map" role="region" aria-label="시스템 지도 (좁은 화면에서는 가로로 밀어 보기)" tabindex="0">
+    <svg id="svg" viewBox="0 0 1260 800" xmlns="http://www.w3.org/2000/svg" aria-labelledby="svgt">
+      <title id="svgt">도란도란 시스템 구성도</title>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink2)"/></marker>
+        <marker id="arrOn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--hi)"/></marker>
+      </defs>
+      <g id="groups"></g><g id="edges"></g><g id="nodes"></g><g id="buckets"></g>
+    </svg>
+  </div>
+
+  <div class="flows">
+    <section class="box" aria-labelledby="flowh">
+      <h2 id="flowh">핵심 흐름</h2>
+      <div class="tabs" role="group" aria-label="흐름 고르기" id="tabs"></div>
+      <ol class="steps" id="steps"></ol>
+      <div class="ctlrow">
+        <button class="ctl" id="prev" type="button">← 이전</button>
+        <button class="ctl" id="play" type="button">▶ 순서대로</button>
+        <button class="ctl" id="next" type="button">다음 →</button>
+        <p class="hint" id="pos"></p>
+      </div>
+    </section>
+    <section class="box detail" aria-live="polite" id="detail"></section>
+  </div>
+
+  <section class="box">
+    <h2>지금 알아 둘 것</h2>
+    <div class="notes">
+      <p><b>한 곳에서 둘이 돈다.</b> 개발자 PC(로컬 API 3100 + Docker MariaDB)와 공용 dev 서버(EC2 1대)가 같은 S3 dev 버킷과 같은 Modal 앱을 쓴다. DB만 따로다.</p>
+      <p><b>EC2는 검증용이다.</b> 운영 구성(도메인·HTTPS·사설 DB)은 다음 단계다.</p>
+      <p><b>GPU는 쓸 때만 뜬다.</b> Modal 서버리스 T4, 동시 1대, 유휴 60초 뒤 종료. 첫 작업은 컨테이너가 뜨는 시간이 붙는다.</p>
+      <p><b>성우 낭독은 실제 녹음이다.</b> 동화 8편은 녹음을 Modal에서 받아쓰고 EC2 컨테이너에서 문장별로 잘라 넣었다. 기계 합성(Supertonic 3)은 2026-11-07 제거.</p>
+      <p><b>점선 상자는 아직 없는 것.</b> 그림 엔진(새 동화 표지가 없다), BGM·효과음(선택), CDN(운영 전환 때). 연결 방법은 각 상자를 눌러 보기.</p>
+      <p><b>계약은 api-spec.</b> 작업 페이로드(§11)·타임라인 단어 <code>{w, s, e}</code>를 Worker와 앱이 함께 지킨다.</p>
+    </div>
+  </section>
+  <button class="ctl themebtn" id="theme" type="button">테마 바꾸기</button>
+</div>
+
+<script>
+// ---- 구성요소 (좌표는 viewBox 1260×800) ----
+const G = [
+  { x: 540, y: 18, w: 380, h: 560, t: 'AWS EC2 · dev 1대', s: 'docker compose · t3.micro · 서울' },
+  { x: 1000, y: 18, w: 240, h: 512, t: 'Modal · 서버리스 GPU', s: 'T4 · 동시 1대 · 유휴 60초 종료' },
+  { x: 240, y: 630, w: 1000, h: 140, t: 'AWS S3 · 서울 · 버킷 7개(dev)', s: '퍼블릭 차단 · 서명 URL로만 · 앱·Worker는 AWS 키 없음' },
+];
+const N = [
+  { id: 'parent', x: 20, y: 90, w: 150, h: 70, fill: '--peach', t: '보호자 · 아이', s: '녹음 · 듣기 · 질문', st: 'ok',
+    d: '부모가 목소리를 녹음하고, 아이와 동화를 듣는다. 앱에서 피드백 버튼으로 화면·컴포넌트와 함께 의견을 남긴다.', k: [['쓰는 곳', 'iOS·Android(Expo Go)·웹']] },
+  { id: 'staff', x: 20, y: 300, w: 150, h: 70, fill: '--peach', t: '직원 · 작가', s: '원고 · 음성 실험', st: 'ok',
+    d: '동화 원고를 만들고 검수·발행하며, 음성 모델을 나란히 비교한다.', k: [['쓰는 곳', '스튜디오(웹)']] },
+  { id: 'app', x: 240, y: 80, w: 200, h: 92, fill: '--butter', t: '도란도란 앱', s: 'Expo SDK 58 · RN 0.88', key: 'doran-app', st: 'part',
+    d: '가입·로그인, 목소리 녹음, 모델 고르기(읽어 주는 목소리 / 성우 낭독에 내 음색), 동화 재생·자막·질문, 피드백. 설정은 API 주소 하나(EXPO_PUBLIC_API_URL) — 비밀 키 없음.',
+    k: [['저장소', 'vision-ground/doran-doran-app'], ['상태', '흐름 동작 · 소셜 로그인·스토어 결제는 dev 로그인·mock'], ['문서', 'docs/screen-spec.md']] },
+  { id: 'studio', x: 240, y: 300, w: 200, h: 84, fill: '--butter', t: '스튜디오', s: 'Next.js 16 · 서버 액션', key: 'doran-doran-studio', st: 'part',
+    d: '원고 제작·검수·발행과 음성 실험실(/voice-lab). 실험 데이터·작업은 API(/admin/lab)가 갖는다.', k: [['저장소', 'doran-doran-studio'], ['상태', '실험실 브라우저 업로드 끝까지는 미확인']] },
+  { id: 'cdb', x: 240, y: 404, w: 200, h: 56, fill: '--pink', t: '콘텐츠 DB', s: 'PGlite(로컬) / Supabase', st: 'part',
+    d: '스튜디오 원고·버전. 서비스 DB(MariaDB)와 따로 있다 — 통합은 별도 결정.', k: [['연결', '스튜디오만']] },
+  { id: 'ext', x: 240, y: 490, w: 200, h: 92, fill: '--card', t: '외부 연동', s: '결제 · 메일 · 이벤트', st: 'part',
+    d: '어댑터로 바꿔 끼운다. 지금 dev는 결제 mock, 메일 mock(인증 코드를 화면에 표시), 이벤트는 파일. Toss·Apple·Google 검증 코드는 있으나 실제 키로는 미검증, SES는 계획.',
+    k: [['결제', 'mock 🟡 (Toss·StoreKit·Play 코드 있음)'], ['메일', 'mock ⬜ SES 계획'], ['이벤트', 'file 🟡 · Firehose 코드 있음']] },
+  { id: 'caddy', x: 560, y: 64, w: 340, h: 50, fill: '--card', t: 'Caddy', s: '리버스 프록시 → api:3000', st: 'part',
+    d: 'EC2 앞단 리버스 프록시. 도메인·자동 TLS는 운영 전환 때.', k: [] },
+  { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 115개', key: 'src/', st: 'ok',
+    d: '모든 비즈니스 규칙의 한 곳. 인증(ES256)·검증(zod)·멱등 키·요청 한도, 목소리·동화·결제·재생·학습, 작업 큐 등록, Worker 결과 검증(sha256). 개발 API는 그림 주소를 요청 주소로 만든다.',
+    k: [['저장소', 'doran-doran src/ (모듈 19개)'], ['로컬', 'PORT=3100 · npm run dev:restart'], ['문서', 'docs/api-spec.md · docs/architecture.md']] },
+  { id: 'disp', x: 560, y: 310, w: 340, h: 76, fill: '--sky', t: '디스패처', s: '별도 프로세스 · 2초 루프 · 1시간 정리 배치', key: 'src/dispatcher', st: 'ok',
+    d: '큐에서 작업을 점유(SKIP LOCKED)해 페이로드(서명 URL 2시간)를 만들고 Modal에 제출, 10초마다 결과를 폴링해 API 콜백으로 되돌린다. 1시간마다 삭제 예약 파일 영구 삭제·탈퇴 정리 등.',
+    k: [['GPU 경로', 'GPU_INFERENCE_PROVIDER=modal (family → Modal 앱)'], ['타임아웃', 'heartbeat 90초 · 재시도 30초→2분→8분']] },
+  { id: 'db', x: 560, y: 420, w: 225, h: 96, fill: '--pink', t: 'MariaDB 11.8', s: '회원·목소리·작업 큐·결제·학습', key: 'migrations 001–013', st: 'ok',
+    d: '서비스 상태와 작업 큐(voice_jobs)를 함께 둔다(ORM 없이 SQL). 마이그레이션 머리말에 되돌리는 SQL. 동화 숨김은 stories.status=archived.', k: [['로컬', 'Docker doran-doran-mariadb-1 (53306)'], ['백업', 'npm run db:backup · 배포 때 자동']] },
+  { id: 'job', x: 800, y: 420, w: 100, h: 96, fill: '--card', t: '일회성', s: '작업 컨테이너', key: 'tsx scripts/*', st: 'ok',
+    d: '배포·데이터 작업을 EC2에서 한 번 돌리는 빌드 이미지 컨테이너: 시드, 녹음 낭독 자르기·등록(narration:import cut), 타임라인 정리. 개발자 PC로 처리 작업을 돌리지 않는다는 규칙(CLAUDE.md)에 따라 여기서.',
+    k: [['예', 'NARRATION_MODE=cut npx tsx scripts/import-narration.ts …']] },
+  { id: 'qwen', x: 1015, y: 82, w: 210, h: 62, fill: '--mint', t: '읽어 주는 목소리', s: 'Qwen3-TTS 1.7B · 기본 모델', key: 'doran-voice-worker-qwen3_tts', st: 'ok',
+    d: '부모 녹음(전사 포함)을 참조로 글을 직접 읽는다. 선택 전 기본 모델.', k: [['입력', '참조 녹음 + 대본 문장'], ['출력', '문장 오디오 · 전체 오디오 · 타임라인']] },
+  { id: 'svc', x: 1015, y: 158, w: 210, h: 62, fill: '--mint', t: '성우 낭독에 내 음색', s: 'Seed-VC V2 · 음성 변환', key: 'doran-voice-worker-seed_vc', st: 'ok',
+    d: '성우 낭독(녹음)의 문장 오디오를 부모 음색으로 바꾼다. 성우 녹음이 있는 동화(8편)에서만. 출력은 클리핑 전에 음량을 맞춘다.', k: [['입력', '문장별 source_audio_url + 부모 참조'], ['대체', '낭독 없는 동화는 기본 모델로']] },
+  { id: 'stt', x: 1015, y: 234, w: 210, h: 62, fill: '--mint', t: '받아쓰기', s: 'faster-whisper large-v3', key: 'doran-stt', st: 'ok',
+    d: '성우 녹음을 단어 시각까지 받아쓴다. 새 녹음 동화를 등록할 때만 부른다(호출만 PC/서버, 처리는 Modal).', k: [['실행', 'npm run narration:transcribe'], ['결과', 'S3 content/narration/stt/']] },
+  { id: 'beep', x: 1015, y: 310, w: 210, h: 46, fill: '--card', t: 'beep', s: '배관 확인용 · 테스트 낭독 모델', st: 'ok',
+    d: '신호음을 만드는 가짜 엔진. 파이프라인 점검과 E2E 테스트용.', k: [] },
+  // 계획(⬜): 지금은 없지만 필요한 것 — 팀원 목표 구성안·docs/infrastructure.md에서 가져옴
+  { id: 'img', x: 1015, y: 380, w: 210, h: 58, fill: '--card', t: '그림 엔진', s: 'ComfyUI · 표지·장면 그림', key: 'doran-doran-image-engine', st: 'todo',
+    d: '새 동화(녹음 8편)에 표지·장면 그림이 없다 — 지금 앱에는 [표지 그림] 자리표시. 저장소는 있으나 서비스 파이프라인(작업 큐·S3 content)에 연결되지 않았다.', k: [['필요한 일', '그림 작업 종류 추가 → content 버킷 → stories.cover_url']] },
+  { id: 'bgm', x: 1015, y: 452, w: 210, h: 56, fill: '--card', t: 'BGM · 효과음', s: '배경음·효과음 생성 (선택)', st: 'todo',
+    d: '동화 분위기 배경음과 효과음. 타임라인 cues·story_versions.audio_assets 자리는 이미 있다.', k: [['우선순위', '선택 — 표지 그림 다음']] },
+  { id: 'cdn', x: 1095, y: 638, w: 130, h: 46, fill: '--card', t: 'CDN', s: 'CloudFront · 계획', st: 'todo',
+    d: '공개 콘텐츠(그림·샘플 낭독)를 CDN으로. 지금은 API가 그림을 직접 내주고 오디오는 S3 서명 URL. 운영 전환 때 CONTENT_BASE_URL을 CDN으로.', k: [['문서', 'docs/infrastructure.md §5']] },
+];
+const B = [
+  ['voice-raw', '부모 녹음'], ['renditions', '생성 음성'], ['content', '그림·성우'], ['child-voice', '아이 답'],
+  ['feedback', '스크린샷'], ['models', '모델'], ['training', '학습(계획)'],
+];
+const E = [
+  // 세로선은 30px 이상 띄운다(가독성) — 클라이언트↔서버 사이 x=470·500·530, 서버↔GPU 사이 x=950
+  { id: 'u-app', d: 'M170 125 L240 125', l: '' },
+  { id: 'u-studio', d: 'M170 335 L240 335', l: '' },
+  { id: 'app-api', d: 'M440 102 L560 102', l: 'HTTPS JSON', lx: 500, ly: 94 },
+  { id: 'studio-api', d: 'M440 320 L470 320 L470 80 L560 80', l: '/admin/lab', lx: 464, ly: 210, rot: -90 },
+  { id: 'studio-cdb', d: 'M340 384 L340 404', l: '' },
+  { id: 'caddy-api', d: 'M730 114 L730 150', l: '' },
+  { id: 'api-ext', d: 'M560 240 L500 240 L500 536 L440 536', l: '결제·메일·이벤트', lx: 494, ly: 400, rot: -90 },
+  { id: 'api-db', d: 'M560 262 L530 262 L530 468 L560 468', l: 'SQL · 작업 등록', lx: 524, ly: 370, rot: -90 },
+  { id: 'disp-db', d: 'M670 386 L670 420', l: '작업 점유', lx: 678, ly: 408, anchor: 'start' },
+  { id: 'disp-api', d: 'M840 310 L840 270', l: '콜백', lx: 848, ly: 294, anchor: 'start' },
+  { id: 'disp-modal', d: 'M900 348 L1000 348', l: '제출·폴링', lx: 975, ly: 340, anchor: 'middle' },
+  { id: 'api-s3', d: 'M900 196 L950 196 L950 630', l: '서명 URL · 결과 검증', lx: 958, ly: 470, rot: 90 },
+  { id: 'app-s3', d: 'M240 150 L205 150 L205 660 L240 660', l: '녹음 PUT · 재생 GET', lx: 199, ly: 420, rot: -90, dash: true },
+  { id: 'modal-s3', d: 'M1060 530 L1060 630', l: '참조 GET · 결과 PUT', lx: 1068, ly: 586, anchor: 'start', dash: true },
+  { id: 'job-s3', d: 'M850 516 L850 630', l: '녹음 자르기', lx: 858, ly: 592, anchor: 'start', dash: true },
+  { id: 'job-db', d: 'M800 468 L785 468', l: '' },
+];
+// ---- 흐름 (단계마다 켜질 경로·구성요소) ----
+const F = {
+  voice: { name: '목소리 등록 · 모델 고르기', steps: [
+    ['부모가 앱에서 안내 문장을 녹음한다', ['u-app'], ['parent', 'app']],
+    ['앱이 업로드 URL을 받아 녹음을 S3(voice-raw)에 직접 올린다', ['app-api', 'caddy-api', 'app-s3'], ['app', 'api']],
+    ['API가 품질 검사(길이·무음·클리핑·SNR) 뒤 프로필을 ready로', ['app-api', 'api-db'], ['api', 'db']],
+    ['S08 "두 가지로 들어보기" → 후보 모델마다 미리듣기 작업 등록', ['app-api', 'api-db'], ['api', 'db']],
+    ['디스패처가 작업을 점유해 Modal(Qwen3·Seed-VC)에 제출', ['disp-db', 'disp-modal'], ['disp', 'qwen', 'svc']],
+    ['Worker가 녹음·성우 원본을 받아 만들고 결과를 S3에 올린다', ['modal-s3'], ['qwen', 'svc']],
+    ['디스패처가 결과를 콜백으로 되돌리고 API가 검증해 succeeded', ['disp-api', 'api-s3', 'api-db'], ['disp', 'api']],
+    ['앱이 상태를 조회해 오디오를 S3에서 바로 재생, 부모가 하나를 고른다', ['app-api', 'app-s3'], ['app']],
+  ] },
+  story: { name: '동화 끝까지 듣기', steps: [
+    ['"끝까지 듣기" — 이용권 확인 후 생성 요청(캐시면 바로 재생)', ['u-app', 'app-api', 'caddy-api', 'api-db'], ['app', 'api', 'db']],
+    ['고른 모델로 synthesize 작업. Seed-VC인데 성우 낭독이 없으면 기본 모델로', ['api-db'], ['api', 'db']],
+    ['디스패처 → Modal 제출 (문장별 성우 원본 URL은 Seed-VC만)', ['disp-db', 'disp-modal'], ['disp', 'qwen', 'svc']],
+    ['Worker가 문장마다 만들고(재사용 문장은 그대로) 오디오·타임라인을 S3에', ['modal-s3'], ['qwen', 'svc']],
+    ['콜백 → API가 sha256·타임라인 검증 뒤 ready', ['disp-api', 'api-s3', 'api-db'], ['api']],
+    ['앱이 오디오·자막(timeline {w,s,e})을 S3에서 받아 재생, 질문에서 멈춤', ['app-s3', 'app-api'], ['app']],
+  ] },
+  narr: { name: '성우 녹음 동화 등록', steps: [
+    ['녹음 원본을 S3 content에 올린다', [], ['staff']],
+    ['Modal 받아쓰기가 원본을 읽어 단어 시각까지 받아쓰고 결과를 S3에', ['modal-s3'], ['stt']],
+    ['EC2 일회성 컨테이너가 원본·받아쓰기를 받아 문장으로 나누고 자른다', ['job-s3'], ['job']],
+    ['동화를 게시하고 문장 오디오·전체 오디오·타임라인을 기본 성우 낭독으로 등록', ['job-s3', 'job-db'], ['job', 'db']],
+    ['로컬 DB는 같은 S3 파일을 연결만(link) — 처리 없음', [], ['db']],
+    ['앱 서재·샘플 듣기·Seed-VC 원본이 이 녹음을 쓴다', ['app-api', 'app-s3', 'modal-s3'], ['app', 'svc']],
+  ] },
+};
+const STATUS = { ok: ['✅ 구현', '--ok'], part: ['🟡 부분', '--part'], todo: ['⬜ 계획', '--todo'] };
+
+// ---- 그리기 ----
+const ns = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (parent) parent.appendChild(e); return e; };
+const $ = (id) => document.getElementById(id);
+for (const g of G) {
+  const gg = el('g', { class: 'grp' }, $('groups'));
+  el('rect', { x: g.x, y: g.y, width: g.w, height: g.h, rx: 18 }, gg);
+  el('text', { x: g.x + 14, y: g.y + 22 }, gg).textContent = g.t;
+  el('text', { x: g.x + 14, y: g.y + 38, class: 'gsub' }, gg).textContent = g.s;
+}
+// S3 버킷: 그룹 제목 아래 한 줄
+B.forEach(([name, what], i) => {
+  const x = 258 + i * 118, y = 692;
+  const g = el('g', { class: 'bucket' }, $('buckets'));
+  el('rect', { x, y, width: 108, height: 52, rx: 10 }, g);
+  el('text', { x: x + 10, y: y + 21 }, g).textContent = name;
+  el('text', { x: x + 10, y: y + 39, class: 'bs' }, g).textContent = what;
+});
+const edgeEl = {};
+for (const e of E) {
+  const g = el('g', { class: 'edge' + (e.dash ? ' dash' : ''), 'data-id': e.id }, $('edges'));
+  el('path', { d: e.d, 'marker-end': 'url(#arr)' }, g);
+  if (e.l) {
+    const t = el('text', { x: e.lx, y: e.ly, 'text-anchor': e.anchor || 'middle' }, g);
+    if (e.rot) t.setAttribute('transform', `rotate(${e.rot} ${e.lx} ${e.ly})`);
+    t.textContent = e.l;
+  }
+  edgeEl[e.id] = g;
+}
+const nodeEl = {};
+for (const n of N) {
+  const g = el('g', { class: 'node' + (n.st === 'todo' ? ' todo' : ''), tabindex: 0, role: 'button', 'aria-label': `${n.t} — ${n.s}`, 'data-id': n.id }, $('nodes'));
+  el('rect', { class: 'shadow', x: n.x + 4, y: n.y + 5, width: n.w, height: n.h, rx: 12 }, g);
+  el('rect', { class: 'body', x: n.x, y: n.y, width: n.w, height: n.h, rx: 12, fill: `var(${n.fill})` }, g);
+  el('text', { class: 't', x: n.x + 12, y: n.y + 24 }, g).textContent = n.t;
+  el('text', { class: 's', x: n.x + 12, y: n.y + 42 }, g).textContent = n.s;
+  if (n.key && n.h > 64) el('text', { class: 'k', x: n.x + 12, y: n.y + 60 }, g).textContent = n.key;
+  const [label, tok] = STATUS[n.st];
+  el('circle', { cx: n.x + n.w - 14, cy: n.y + 15, r: 5.5, fill: `var(${tok})`, stroke: 'var(--ink)', 'stroke-width': 1.5 }, g).appendChild(document.createElementNS(ns, 'title')).textContent = label;
+  g.addEventListener('click', () => select(n.id));
+  g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(n.id); } });
+  nodeEl[n.id] = g;
+}
+
+// ---- 상호작용 ----
+function setOn(edges, nodes) {
+  const anyE = edges && edges.length, anyN = nodes && nodes.length;
+  for (const [id, g] of Object.entries(edgeEl)) {
+    const on = anyE && edges.includes(id);
+    g.classList.toggle('on', !!on); g.classList.toggle('dim', !!(anyE || anyN) && !on);
+    g.querySelector('path').setAttribute('marker-end', on ? 'url(#arrOn)' : 'url(#arr)');
+  }
+  for (const [id, g] of Object.entries(nodeEl)) g.classList.toggle('dim', !!anyN && !nodes.includes(id));
+}
+function select(id, highlight = true) {
+  const n = N.find((x) => x.id === id);
+  for (const [k, g] of Object.entries(nodeEl)) g.classList.toggle('sel', k === id);
+  const touching = E.filter((e) => e.id.split('-').some((p) => p === id || (id === 'qwen' || id === 'svc' || id === 'stt' || id === 'beep') && p === 'modal')).map((e) => e.id);
+  if (highlight) setOn(touching, [id]);
+  const [label, tok] = STATUS[n.st];
+  const d = $('detail');
+  d.innerHTML = '';
+  const h = document.createElement('h2'); h.textContent = n.t;
+  const chip = document.createElement('span'); chip.className = 'chip'; chip.style.color = `var(${tok})`; chip.textContent = label; h.appendChild(chip);
+  const p = document.createElement('p'); p.style.margin = '0'; p.textContent = n.d;
+  d.append(h, p);
+  const rows = [['구성', n.s], ...(n.key ? [['위치', n.key]] : []), ...n.k];
+  const dl = document.createElement('dl');
+  for (const [k, v] of rows) { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.append(dt, dd); }
+  d.appendChild(dl);
+}
+let flow = 'voice', step = 0, timer = null, started = false;
+function renderTabs() {
+  const t = $('tabs'); t.innerHTML = '';
+  for (const [k, f] of Object.entries(F)) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = f.name; b.setAttribute('aria-pressed', String(k === flow));
+    b.addEventListener('click', () => { stop(); flow = k; step = 0; renderTabs(); renderSteps(); show(); });
+    t.appendChild(b);
+  }
+}
+function renderSteps() {
+  const ol = $('steps'); ol.innerHTML = '';
+  F[flow].steps.forEach(([txt], i) => {
+    const li = document.createElement('li'); li.textContent = txt; li.tabIndex = 0;
+    li.addEventListener('click', () => { stop(); step = i; show(); });
+    li.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { stop(); step = i; show(); } });
+    ol.appendChild(li);
+  });
+}
+function show() {
+  started = true;
+  const s = F[flow].steps[step];
+  [...$('steps').children].forEach((li, i) => li.classList.toggle('on', i === step));
+  for (const g of Object.values(nodeEl)) g.classList.remove('sel');
+  setOn(s[1], s[2]);
+  $('pos').textContent = `${step + 1} / ${F[flow].steps.length}`;
+}
+function stop() { if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ 순서대로'; } }
+$('prev').addEventListener('click', () => { stop(); step = (step - 1 + F[flow].steps.length) % F[flow].steps.length; show(); });
+$('next').addEventListener('click', () => { stop(); step = (step + 1) % F[flow].steps.length; show(); });
+$('play').addEventListener('click', () => {
+  if (timer) return stop();
+  $('play').textContent = '■ 멈춤';
+  timer = setInterval(() => { step = (step + 1) % F[flow].steps.length; show(); }, 2200);
+});
+$('theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+});
+// 처음에는 아무것도 흐리지 않는다 — 전체가 한눈에 보이게. 단계를 누르거나 ▶를 누르면 경로가 켜진다
+renderTabs(); renderSteps(); select('api', false); for (const g of Object.values(nodeEl)) g.classList.remove('sel'); $('pos').textContent = '단계를 누르거나 ▶';
+</script>
+
+</body>
+</html>
