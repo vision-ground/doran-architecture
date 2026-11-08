@@ -218,52 +218,55 @@ const B = [
 ];
 const E = [
   // 세로선은 30px 이상 띄운다(가독성) — 클라이언트↔서버 사이 x=470·500·530, 서버↔GPU 사이 x=950
-  { id: 'u-app', d: 'M170 125 L240 125', l: '' },
-  { id: 'u-studio', d: 'M170 335 L240 335', l: '' },
-  { id: 'app-api', d: 'M440 102 L560 102', l: 'HTTPS JSON', lx: 500, ly: 94 },
-  { id: 'studio-api', d: 'M440 320 L470 320 L470 80 L560 80', l: '/admin/lab', lx: 464, ly: 210, rot: -90 },
-  { id: 'studio-cdb', d: 'M340 384 L340 404', l: '' },
-  { id: 'caddy-api', d: 'M730 114 L730 150', l: '' },
-  { id: 'api-ext', d: 'M560 240 L500 240 L500 536 L440 536', l: '결제·메일·이벤트', lx: 494, ly: 400, rot: -90 },
-  { id: 'api-db', d: 'M560 262 L530 262 L530 468 L560 468', l: 'SQL · 작업 등록', lx: 524, ly: 370, rot: -90 },
-  { id: 'disp-db', d: 'M670 386 L670 420', l: '작업 점유', lx: 678, ly: 408, anchor: 'start' },
-  { id: 'disp-api', d: 'M840 310 L840 270', l: '콜백', lx: 848, ly: 294, anchor: 'start' },
-  { id: 'disp-modal', d: 'M900 348 L1000 348', l: '제출·폴링', lx: 975, ly: 340, anchor: 'middle' },
-  { id: 'api-s3', d: 'M900 196 L950 196 L950 630', l: '서명 URL · 결과 검증', lx: 958, ly: 470, rot: 90 },
-  { id: 'app-s3', d: 'M240 150 L205 150 L205 660 L240 660', l: '녹음 PUT · 재생 GET', lx: 199, ly: 420, rot: -90, dash: true },
-  { id: 'modal-s3', d: 'M1060 530 L1060 630', l: '참조 GET · 결과 PUT', lx: 1068, ly: 586, anchor: 'start', dash: true },
-  { id: 'job-s3', d: 'M850 516 L850 630', l: '녹음 자르기', lx: 858, ly: 592, anchor: 'start', dash: true },
-  { id: 'job-db', d: 'M800 468 L785 468', l: '' },
+  { id: 'u-app', f: 'parent', t: 'app', d: 'M170 125 L240 125', l: '' },
+  { id: 'u-studio', f: 'staff', t: 'studio', d: 'M170 335 L240 335', l: '' },
+  { id: 'app-api', f: 'app', t: 'caddy', d: 'M440 102 L560 102', l: 'HTTPS JSON', lx: 500, ly: 94 },
+  { id: 'studio-api', f: 'studio', t: 'caddy', d: 'M440 320 L470 320 L470 80 L560 80', l: '/admin/lab', lx: 464, ly: 210, rot: -90 },
+  { id: 'studio-cdb', f: 'studio', t: 'cdb', d: 'M340 384 L340 404', l: '' },
+  { id: 'caddy-api', f: 'caddy', t: 'api', d: 'M730 114 L730 150', l: '' },
+  { id: 'api-ext', f: 'api', t: 'ext', d: 'M560 240 L500 240 L500 536 L440 536', l: '결제·메일·이벤트', lx: 494, ly: 400, rot: -90 },
+  { id: 'api-db', f: 'api', t: 'db', d: 'M560 262 L530 262 L530 468 L560 468', l: 'SQL · 작업 등록', lx: 524, ly: 370, rot: -90 },
+  { id: 'disp-db', f: 'disp', t: 'db', d: 'M670 386 L670 420', l: '작업 점유', lx: 678, ly: 408, anchor: 'start' },
+  { id: 'disp-api', f: 'disp', t: 'api', d: 'M840 310 L840 270', l: '콜백', lx: 848, ly: 294, anchor: 'start' },
+  { id: 'disp-modal', f: 'disp', t: 'modal', d: 'M900 348 L1000 348', l: '제출·폴링', lx: 975, ly: 340, anchor: 'middle' },
+  { id: 'api-s3', f: 'api', t: 's3', d: 'M900 196 L950 196 L950 630', l: '서명 URL · 결과 검증', lx: 958, ly: 470, rot: 90 },
+  { id: 'app-s3', f: 'app', t: 's3', d: 'M240 150 L205 150 L205 660 L240 660', l: '녹음 PUT · 재생 GET', lx: 199, ly: 420, rot: -90, dash: true },
+  { id: 'modal-s3', f: 'modal', t: 's3', d: 'M1060 530 L1060 630', l: '참조 GET · 결과 PUT', lx: 1068, ly: 586, anchor: 'start', dash: true },
+  { id: 'job-s3', f: 'job', t: 's3', d: 'M850 516 L850 630', l: '녹음 자르기', lx: 858, ly: 592, anchor: 'start', dash: true },
+  { id: 'job-db', f: 'job', t: 'db', d: 'M800 468 L785 468', l: '' },
 ];
 // ---- 흐름 (단계마다 켜질 경로·구성요소) ----
+// 단계: [설명, 켜질 화살표, 함께 강조할 GPU 상자]. 화살표 양 끝 상자는 자동으로 켜진다(edgeNodes)
+const API = ['app-api', 'caddy-api']; // 앱 → Caddy → API는 늘 함께
 const F = {
   voice: { name: '목소리 등록 · 모델 고르기', steps: [
-    ['부모가 앱에서 안내 문장을 녹음한다', ['u-app'], ['parent', 'app']],
-    ['앱이 업로드 URL을 받아 녹음을 S3(voice-raw)에 직접 올린다', ['app-api', 'caddy-api', 'app-s3'], ['app', 'api']],
-    ['API가 품질 검사(길이·무음·클리핑·SNR) 뒤 프로필을 ready로', ['app-api', 'api-db'], ['api', 'db']],
-    ['S08 "두 가지로 들어보기" → 후보 모델마다 미리듣기 작업 등록', ['app-api', 'api-db'], ['api', 'db']],
-    ['디스패처가 작업을 점유해 Modal(Qwen3·Seed-VC)에 제출', ['disp-db', 'disp-modal'], ['disp', 'qwen', 'svc']],
-    ['Worker가 녹음·성우 원본을 받아 만들고 결과를 S3에 올린다', ['modal-s3'], ['qwen', 'svc']],
-    ['디스패처가 결과를 콜백으로 되돌리고 API가 검증해 succeeded', ['disp-api', 'api-s3', 'api-db'], ['disp', 'api']],
-    ['앱이 상태를 조회해 오디오를 S3에서 바로 재생, 부모가 하나를 고른다', ['app-api', 'app-s3'], ['app']],
+    ['부모가 앱에서 안내 문장을 녹음한다', ['u-app'], []],
+    ['앱이 API에서 업로드 URL을 받아 녹음을 S3(voice-raw)에 직접 올린다', [...API, 'app-s3'], []],
+    ['등록 요청 → API가 S3에서 녹음을 받아 품질 검사(길이·무음·클리핑·SNR), 통과하면 ready', [...API, 'api-s3', 'api-db'], []],
+    ['S08 "두 가지로 들어보기" → 후보 모델마다 미리듣기 작업을 큐(voice_jobs)에 등록', [...API, 'api-db'], []],
+    ['디스패처가 작업을 점유해 Modal에 제출', ['disp-db', 'disp-modal'], ['qwen', 'svc']],
+    ['Worker가 녹음(·성우 원본)을 S3에서 받아 만들고 결과를 S3에 올린다', ['modal-s3'], ['qwen', 'svc']],
+    ['디스패처가 Modal을 폴링해 결과를 받아 API 콜백으로 되돌리고, API가 S3 결과를 검증해 succeeded', ['disp-modal', 'disp-api', 'api-s3', 'api-db'], ['qwen', 'svc']],
+    ['앱이 상태를 조회해 오디오를 S3에서 바로 재생, 부모가 하나를 고른다', [...API, 'app-s3'], []],
   ] },
   story: { name: '동화 끝까지 듣기', steps: [
-    ['"끝까지 듣기" — 이용권 확인 후 생성 요청(캐시면 바로 재생)', ['u-app', 'app-api', 'caddy-api', 'api-db'], ['app', 'api', 'db']],
-    ['고른 모델로 synthesize 작업. Seed-VC인데 성우 낭독이 없으면 기본 모델로', ['api-db'], ['api', 'db']],
-    ['디스패처 → Modal 제출 (문장별 성우 원본 URL은 Seed-VC만)', ['disp-db', 'disp-modal'], ['disp', 'qwen', 'svc']],
-    ['Worker가 문장마다 만들고(재사용 문장은 그대로) 오디오·타임라인을 S3에', ['modal-s3'], ['qwen', 'svc']],
-    ['콜백 → API가 sha256·타임라인 검증 뒤 ready', ['disp-api', 'api-s3', 'api-db'], ['api']],
-    ['앱이 오디오·자막(timeline {w,s,e})을 S3에서 받아 재생, 질문에서 멈춤', ['app-s3', 'app-api'], ['app']],
+    ['"끝까지 듣기" — 이용권 확인 후 생성 요청(이미 만든 것이면 바로 재생)', ['u-app', ...API, 'api-db'], []],
+    ['고른 모델로 synthesize 작업 등록. Seed-VC인데 성우 낭독이 없으면 기본 모델(Qwen3)로', ['api-db'], []],
+    ['디스패처가 점유해 Modal에 제출 — Seed-VC면 문장별 성우 원본 URL도 싣는다', ['disp-db', 'disp-modal'], ['qwen', 'svc']],
+    ['Worker가 문장마다 만들고(재사용 문장은 그대로) 오디오·타임라인을 S3에 올린다', ['modal-s3'], ['qwen', 'svc']],
+    ['폴링 → 콜백 → API가 sha256·타임라인을 검증해 ready', ['disp-modal', 'disp-api', 'api-s3', 'api-db'], ['qwen', 'svc']],
+    ['앱이 오디오·자막(timeline {w,s,e})을 S3에서 받아 재생, 질문에서 멈춘다', [...API, 'app-s3'], []],
   ] },
   narr: { name: '성우 녹음 동화 등록', steps: [
-    ['녹음 원본을 S3 content에 올린다', [], ['staff']],
-    ['Modal 받아쓰기가 원본을 읽어 단어 시각까지 받아쓰고 결과를 S3에', ['modal-s3'], ['stt']],
-    ['EC2 일회성 컨테이너가 원본·받아쓰기를 받아 문장으로 나누고 자른다', ['job-s3'], ['job']],
-    ['동화를 게시하고 문장 오디오·전체 오디오·타임라인을 기본 성우 낭독으로 등록', ['job-s3', 'job-db'], ['job', 'db']],
-    ['로컬 DB는 같은 S3 파일을 연결만(link) — 처리 없음', [], ['db']],
-    ['앱 서재·샘플 듣기·Seed-VC 원본이 이 녹음을 쓴다', ['app-api', 'app-s3', 'modal-s3'], ['app', 'svc']],
+    ['성우 녹음 원본을 S3 content 버킷에 올린다(관리자)', [], ['staff']],
+    ['Modal 받아쓰기가 원본을 S3에서 읽어 단어 시각까지 받아쓰고 결과 JSON을 S3에 쓴다 (호출은 스크립트, 처리는 Modal)', ['modal-s3'], ['stt']],
+    ['EC2 일회성 컨테이너가 원본·받아쓰기를 받아 문장으로 나누고 문장별로 자른다', ['job-s3'], []],
+    ['동화를 게시하고 문장 오디오·전체 오디오·타임라인을 기본 성우 낭독으로 MariaDB에 등록', ['job-s3', 'job-db'], []],
+    ['앱 서재·샘플 듣기가 이 녹음을 재생하고, Seed-VC가 원본으로 쓴다', [...API, 'app-s3', 'modal-s3'], ['svc']],
   ] },
 };
+const NODE_IDS = new Set(N.map((n) => n.id));
+const edgeNodes = (ids) => ids.flatMap((id) => { const e = E.find((x) => x.id === id); return [e.f, e.t].filter((n) => NODE_IDS.has(n)); });
 const STATUS = { ok: ['✅ 구현', '--ok'], part: ['🟡 부분', '--part'], todo: ['⬜ 계획', '--todo'] };
 
 // ---- 그리기 ----
@@ -323,8 +326,9 @@ function setOn(edges, nodes) {
 function select(id, highlight = true) {
   const n = N.find((x) => x.id === id);
   for (const [k, g] of Object.entries(nodeEl)) g.classList.toggle('sel', k === id);
-  const touching = E.filter((e) => e.id.split('-').some((p) => p === id || (id === 'qwen' || id === 'svc' || id === 'stt' || id === 'beep') && p === 'modal')).map((e) => e.id);
-  if (highlight) setOn(touching, [id]);
+  const gpu = ['qwen', 'svc', 'stt', 'beep', 'img', 'bgm'].includes(id);
+  const touching = E.filter((e) => e.f === id || e.t === id || (gpu && (e.f === 'modal' || e.t === 'modal'))).map((e) => e.id);
+  if (highlight) setOn(touching, [...new Set([id, ...edgeNodes(touching)])]);
   const [label, tok] = STATUS[n.st];
   const d = $('detail');
   d.innerHTML = '';
@@ -360,7 +364,7 @@ function show() {
   const s = F[flow].steps[step];
   [...$('steps').children].forEach((li, i) => li.classList.toggle('on', i === step));
   for (const g of Object.values(nodeEl)) g.classList.remove('sel');
-  setOn(s[1], s[2]);
+  setOn(s[1], [...new Set([...s[2], ...edgeNodes(s[1])])]);
   $('pos').textContent = `${step + 1} / ${F[flow].steps.length}`;
 }
 function stop() { if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ 순서대로'; } }

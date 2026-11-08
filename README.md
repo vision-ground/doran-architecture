@@ -4,4 +4,4 @@
 
 - 보기: GitHub Pages — https://vision-ground.github.io/doran-architecture/
 - 원본: 비공개 저장소 `doran-doran-api`의 `docs/diagrams/system-architecture.html` (이 저장소는 공개용 사본 — 보안 관련 운영 정보는 뺐다)
-- 갱신: 원본을 고친 뒤 이 저장소의 `index.html`을 다시 만든다
+- 갱신: 원본 저장소에서 `python3 scripts/diagram-public.py <이 저장소 폴더>` → 커밋·push (보안 운영 정보는 스크립트가 빼고, 남아 있으면 실패)
