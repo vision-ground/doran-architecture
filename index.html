@@ -159,7 +159,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <p><b>GPU는 쓸 때만 뜬다.</b> Modal 서버리스 T4, 동시 1대, 유휴 60초 뒤 종료. 첫 작업은 컨테이너가 뜨는 시간이 붙는다.</p>
       <p><b>성우 낭독은 실제 녹음이다.</b> 동화 8편은 녹음을 Modal에서 받아쓰고 EC2 컨테이너에서 문장별로 잘라 넣었다. 기계 합성(Supertonic 3)은 2026-11-07 제거.</p>
       <p><b>점선 상자는 아직 없는 것.</b> 그림 엔진(초기 스튜디오가 PC에서 쓰던 ComfyUI — Modal로 옮길 예정), BGM·효과음(선택), CDN(운영 전환 때). 연결 방법은 각 상자를 눌러 보기.</p>
-      <p><b>스튜디오는 클라우드로 옮기는 중.</b> 음성 실험실만 API·S3로 돌고, 원고 DB·파일·낭독/그림 후보·발행은 아직 개발자 PC에 묶여 있다 — <code>docs/studio-cloud-migration.md</code>.</p>
+      <p><b>스튜디오는 API만 본다.</b> 원고·검수·발행은 MariaDB(/admin/studio), 파일은 S3, 낭독·받아쓰기·그림은 Modal 작업. 로컬 원고 DB는 없앴다 — <code>docs/studio-cloud-migration.md</code>.</p>
       <p><b>계약은 api-spec.</b> 작업 페이로드(§11)·타임라인 단어 <code>{w, s, e}</code>를 Worker와 앱이 함께 지킨다.</p>
     </div>
   </section>
@@ -177,20 +177,16 @@ const N = [
   { id: 'parent', x: 20, y: 90, w: 150, h: 70, fill: '--peach', t: '보호자 · 아이', s: '녹음 · 듣기 · 질문', st: 'ok',
     d: '부모가 목소리를 녹음하고, 아이와 동화를 듣는다. 앱에서 피드백 버튼으로 화면·컴포넌트와 함께 의견을 남긴다.', k: [['쓰는 곳', 'iOS·Android(Expo Go)·웹']] },
   { id: 'staff', x: 20, y: 300, w: 150, h: 70, fill: '--peach', t: '직원 · 작가', s: '원고 · 음성 실험', st: 'ok',
-    d: '동화 원고를 만들고 검수·발행하며, 음성 모델을 나란히 비교한다. 성우 녹음 원본은 지금 스튜디오 화면이 아니라 사람이 S3에 직접 복사한다.', k: [['쓰는 곳', '스튜디오(웹)']] },
+    d: '동화 원고를 만들고 검수·발행하며, 성우 녹음 동화를 등록하고, 음성 모델을 나란히 비교한다.', k: [['쓰는 곳', '스튜디오(웹)']] },
   { id: 'app', x: 240, y: 80, w: 200, h: 92, fill: '--butter', t: '도란도란 앱', s: 'Expo SDK 58 · RN 0.88', key: 'doran-app', st: 'part',
     d: '가입·로그인, 목소리 녹음, 모델 고르기(읽어 주는 목소리 / 성우 낭독에 내 음색), 동화 재생·자막·질문, 피드백. 설정은 API 주소 하나(EXPO_PUBLIC_API_URL) — 비밀 키 없음.',
     k: [['저장소', 'vision-ground/doran-doran-app'], ['상태', '흐름 동작 · 소셜 로그인·스토어 결제는 dev 로그인·mock'], ['문서', 'docs/screen-spec.md']] },
-  { id: 'studio', x: 240, y: 300, w: 200, h: 84, fill: '--butter', t: '스튜디오', s: 'Next.js 16 · 서버 액션', key: 'doran-doran-studio', st: 'part',
-    d: '원고 제작·검수·발행과 음성 실험실(/voice-lab). 지금 클라우드로 도는 것은 실험실뿐이다 — 실험 데이터·작업은 API(/admin/lab)가 갖고 녹음은 S3에 서명 URL로 올린다. 나머지(원고 DB·올린 파일·낭독 후보·그림 후보·발행)는 아직 개발자 PC에 묶여 있어 클라우드로 옮긴다. 받을 API(/admin/studio — 원고·검수·발행·업로드·성우 녹음, MariaDB 014)는 준비됐고 스튜디오 화면 전환이 진행 중이다.',
-    k: [['저장소', 'doran-doran-studio'],
-        ['로컬에 묶인 것', '원고 DB(PGlite 폴더) · 올린 그림(.doran/uploads) · 낭독 후보(로컬 Supertonic — 11-07 은퇴) · 그림 후보(PC의 ComfyUI) · 발행(로컬 out/ 폴더, 받는 서버 없음)'],
-        ['이미 클라우드', '음성 실험실(/admin/lab) · 장면 연출 문장(Claude API)'],
-        ['API 준비됨', '/admin/studio (src/studio·src/narration) — 스튜디오 전환 중'],
-        ['이전 계획', 'docs/studio-cloud-migration.md']] },
-  { id: 'cdb', x: 240, y: 404, w: 200, h: 56, fill: '--pink', t: '콘텐츠 DB', s: 'PGlite(로컬) · MariaDB로 합칠 예정', st: 'part',
-    d: '파일 보관소가 아니라 원고 작업 기록 DB다 — 초안·수정 이력·댓글·검수 요청과 결정·버전·라이브러리(14개 테이블)와 "작가 본인은 승인 못 함" 같은 규칙. 이런 관계형 기록은 S3(파일 보관)로 대신할 수 없다. 지금은 개발자 PC의 PGlite 폴더뿐이고 Supabase는 연결된 적 없다. 서비스 DB(MariaDB)에 이미 동화·버전·장면·발행이 있으므로 따로 둘 필요 없이 MariaDB로 합친다.',
-    k: [['연결', '스튜디오만'], ['이전', 'docs/studio-cloud-migration.md W1']] },
+  { id: 'studio', x: 240, y: 300, w: 200, h: 84, fill: '--butter', t: '스튜디오', s: 'Next.js 16 · API 경유', key: 'doran-doran-studio', st: 'part',
+    d: '원고 제작·검수·발행, 그림·낭독 후보, 화풍·캐릭터 라이브러리, 성우 녹음 동화 등록, 음성 실험실. 11-09부터 모든 데이터와 작업이 API를 거친다 — 원고·검수는 MariaDB(/admin/studio), 그림·녹음은 브라우저가 S3에 서명 URL로 직접 올리고, 낭독·받아쓰기·그림 생성은 작업 큐 → 디스패처 → Modal. 개발자 PC에 묶였던 로컬 원고 DB(PGlite)·로컬 작업자·로컬 그림 엔진은 지웠다.',
+    k: [['저장소', 'doran-doran-studio (PR #2 머지)'],
+        ['로그인', '도란 계정(이메일) + studio_staff 역할 — 첫 관리자는 scripts/studio-staff.ts'],
+        ['아직', '그림 후보 생성은 Modal 가중치(Hugging Face 게이트 저장소 토큰) 대기'],
+        ['계획·계약', 'docs/studio-cloud-migration.md · docs/issues/2026-11-09-012.md']] },
   { id: 'ext', x: 240, y: 490, w: 200, h: 92, fill: '--card', t: '외부 연동', s: '결제 · 메일 · 이벤트', st: 'part',
     d: '어댑터로 바꿔 끼운다. 지금 dev는 결제 mock, 메일 mock(인증 코드를 화면에 표시), 이벤트는 파일. Toss·Apple·Google 검증 코드는 있으나 실제 키로는 미검증, SES는 계획.',
     k: [['결제', 'mock 🟡 (Toss·StoreKit·Play 코드 있음)'], ['메일', 'mock ⬜ SES 계획'], ['이벤트', 'file 🟡 · Firehose 코드 있음']] },
@@ -211,9 +207,10 @@ const N = [
   { id: 'job', x: 800, y: 420, w: 100, h: 96, fill: '--card', t: '배치 작업', s: '필요할 때만', key: '실행 후 삭제', st: 'ok',
     d: '서버에 늘 떠 있는 프로세스가 아니라, 데이터 작업이 필요할 때 API와 같은 이미지로 잠깐 띄우고 끝나면 지우는 컨테이너(docker run --rm). EC2 안에서 돌아 서버 DB·S3를 그대로 쓴다.',
     k: [['하는 일 ①', '서비스를 처음 켤 때 빈 DB에 기본 데이터 채우기 — 쓸 음성 모델, 앱에 보일 동화, 관리자 계정 (시드)'],
-        ['하는 일 ②', '성우 녹음(6분짜리 mp3 한 덩어리)으로 새 동화 만들기 — 받아쓴 글을 문장으로 나누고, 녹음을 문장마다 잘라 작은 소리 파일로 만든 뒤, 동화와 함께 등록. 그래야 앱이 문장 자막·질문 멈춤·부모 목소리 바꾸기를 할 수 있다'],
+        ['하는 일 ②', '(11-09부터는 스튜디오 화면 → API가 같은 코드로 한다. 배치는 CLI로 남김) 성우 녹음(6분짜리 mp3 한 덩어리)으로 새 동화 만들기 — 받아쓴 글을 문장으로 나누고, 녹음을 문장마다 잘라 작은 소리 파일로 만든 뒤, 동화와 함께 등록. 그래야 앱이 문장 자막·질문 멈춤·부모 목소리 바꾸기를 할 수 있다'],
         ['하는 일 ③', '동화 그림을 DB에 연결 — S3에 올린 그림 목록(scenes.json)을 읽어 표지·장면 그림 경로를 채움 (attach-images)'],
         ['하는 일 ④', '이미 저장된 데이터를 한꺼번에 고치기 — 예: 자막 파일 형식이 앱과 달라 자막이 안 나오던 버그 때, 이미 만들어진 자막 파일 8개를 새 형식으로 바꿈'],
+        ['하는 일 ⑤', '스튜디오 첫 관리자 등록(studio-staff)·기본 성우 참조 녹음 등록(narrator-reference)'],
         ['왜 필요한가 ①', 'EC2의 MariaDB는 외부 포트를 열지 않아 도커 내부망에서만 닿는다 — 서버 DB를 고치는 작업은 그 안에서 돌아야 한다'],
         ['왜 필요한가 ②', '서버의 DB 비밀번호·S3 권한(인스턴스 역할)을 개발자 PC로 옮기지 않고 그 자리에서 쓴다'],
         ['왜 필요한가 ③', '배포된 API와 같은 코드·같은 이미지로 돌아, 스키마·규칙이 어긋나지 않는다'],
@@ -261,7 +258,7 @@ const E = [
   { id: 'u-studio', f: 'staff', t: 'studio', d: 'M170 335 L240 335', l: '' },
   { id: 'app-api', f: 'app', t: 'caddy', d: 'M440 102 L560 102', l: 'HTTPS JSON', lx: 500, ly: 94 },
   { id: 'studio-api', f: 'studio', t: 'caddy', d: 'M440 320 L470 320 L470 80 L560 80', l: '/admin/studio · /admin/lab', lx: 464, ly: 210, rot: -90 },
-  { id: 'studio-cdb', f: 'studio', t: 'cdb', d: 'M340 384 L340 404', l: '' },
+  { id: 'studio-s3', f: 'studio', t: 's3', d: 'M240 372 L225 372 L225 645 L240 645', l: '그림·녹음 PUT', lx: 219, ly: 520, rot: -90, dash: true },
   { id: 'caddy-api', f: 'caddy', t: 'api', d: 'M730 114 L730 150', l: '' },
   { id: 'api-ext', f: 'api', t: 'ext', d: 'M560 240 L500 240 L500 536 L440 536', l: '결제·메일·이벤트', lx: 494, ly: 400, rot: -90 },
   { id: 'api-db', f: 'api', t: 'db', d: 'M560 262 L530 262 L530 468 L560 468', l: 'SQL · 작업 등록', lx: 524, ly: 370, rot: -90 },
@@ -327,13 +324,13 @@ const F = {
             ['이어 듣기', '위치를 PATCH /v1/play-sessions/:id 로 저장 → 다음에 그 자리부터']] }],
   ] },
   narr: { name: '성우 녹음 동화 등록', steps: [
-    ['성우 녹음 원본을 S3 content 버킷에 손으로 복사한다 (스튜디오 화면 없음)', [], ['staff'],
-      { d: '지금은 스튜디오가 아니라 사람이 직접 복사했다(8편, issue 2026-11-07-004). 스튜디오에 성우 낭독 업로드 화면은 없다 — 클라우드 이전 계획(W5)에서 스튜디오 화면 → S3 → 받아쓰기 작업으로 바꾼다.', k: [['위치', 'content/narration/source/myeongjak-level1/ko-1…8.mp3']] }],
-    ['Modal 받아쓰기가 원본을 S3에서 읽어 단어마다 시작·끝 시간까지 받아쓰고 결과 JSON을 S3에 쓴다', ['modal-s3'], ['stt'],
+    ['직원이 스튜디오 "성우 녹음" 화면에서 mp3를 올린다 — 브라우저가 S3에 직접', ['u-studio', 'studio-api', 'caddy-api', 'studio-s3'], [],
+      { d: '스튜디오가 API에 업로드 자리를 받아(서명 PUT, sha256·크기 서명) 브라우저가 S3 content 버킷에 바로 올리고, 완료를 알리면 API가 크기·sha256을 확인한다. 이어서 등록을 요청하면 API가 narrations 행과 받아쓰기(transcribe) 작업을 만든다. (처음 8편은 11-07에 손으로 복사했다.)', k: [['요청', 'POST /admin/studio/uploads → S3 PUT → …/complete → POST /admin/studio/narrations'], ['위치', 'content/narration/source/{sha256}.mp3']] }],
+    ['디스패처가 받아쓰기 작업을 Modal에 맡기고, Modal이 원본을 S3에서 읽어 단어마다 시작·끝 시간까지 받아쓴 JSON을 S3에 쓴다', ['disp-db', 'disp-modal', 'modal-s3', 'disp-api'], ['stt'],
       { d: 'transcribe 작업(voice_jobs)을 디스패처가 Modal 받아쓰기 앱으로 보낸다. 원본은 서명 GET(2시간), 결과 JSON은 서명 PUT으로 S3에. 콜백이 sha256을 확인해 storage_objects(stt_result)와 narrations에 기록한다. 결과에는 글과 함께 단어마다 시작·끝 시간(초)이 있다.', k: [['작업', 'voice_jobs kind=transcribe'], ['결과', 'content/narration/stt/{narration}/{job}-a{attempt}/{item}.json']] }],
-    ['EC2 배치 작업 컨테이너가 원본·받아쓰기를 받아 문장으로 나누고 문장별로 자른다', ['job-s3'], [],
-      { d: '문장 끝 부호(. ? ! …)나 15초에서 문장을 끊고, 너무 긴 문장은 "다·요" 같은 끝말과 쉼에서 나눈다. 문장 시작 ~ 다음 문장 시작을 ffmpeg로 잘라 문장 오디오를 만든다(모델이 아니라 일반 도구).', k: [] }],
-    ['동화를 게시하고 문장 오디오·전체 오디오·타임라인을 기본 성우 낭독으로 MariaDB에 등록', ['job-s3', 'job-db'], [], { d: '6문장씩 한 장면. 단어 시간은 받아쓰기 시간을 문장 범위에 맞춘 {w, s, e}(ms). 이 낭독은 사용자가 고를 수 없는 "녹음" 모델로 등록된다.', k: [] }],
+    ['스튜디오가 문장 목록을 보여 주고, 직원이 등록을 누르면 API가 원본을 문장별로 자른다', ['studio-api', 'caddy-api', 'api-s3'], [],
+      { d: '(11-09까지는 EC2 배치 작업 컨테이너가 했다.) 문장 끝 부호(. ? ! …)나 15초에서 문장을 끊고, 너무 긴 문장은 "다·요" 같은 끝말과 쉼에서 나눈다. 문장 시작 ~ 다음 문장 시작을 ffmpeg로 잘라 문장 오디오를 만든다(모델이 아니라 일반 도구).', k: [] }],
+    ['동화를 게시하고 문장 오디오·전체 오디오·타임라인을 기본 성우 낭독으로 MariaDB에 등록', ['api-s3', 'api-db'], [], { d: '6문장씩 한 장면. 단어 시간은 받아쓰기 시간을 문장 범위에 맞춘 {w, s, e}(ms). 이 낭독은 사용자가 고를 수 없는 "녹음" 모델로 등록된다.', k: [] }],
     ['앱 서재·샘플 듣기가 이 녹음을 재생하고, Seed-VC가 원본으로 쓴다', [...API, 'app-s3', 'modal-s3'], ['svc'], { d: '부모가 "성우 낭독에 내 음색"을 고르면 Seed-VC가 이 문장 오디오를 원본으로 부모 음색으로 바꾼다.', k: [] }],
   ] },
 };
