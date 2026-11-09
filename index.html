@@ -100,6 +100,10 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 .bucket rect { fill: var(--card); stroke: var(--ink); stroke-width: 1.5; }
 .bucket text { font-family: var(--mono); font-size: 11px; fill: var(--ink); }
 .bucket .bs { font-family: var(--body); font-size: 11px; fill: var(--ink2); }
+.bucket { cursor: pointer; }
+.bucket:hover rect, .bucket:focus rect { stroke-width: 2.5; }
+.bucket:focus { outline: none; }
+.bucket.sel rect { stroke: var(--hi); stroke-width: 3; }
 .status { font-family: var(--mono); font-size: 11px; }
 @media (prefers-reduced-motion: no-preference) { .edge path, .node rect.body { transition: stroke .2s, stroke-width .2s; } .edge, .node { transition: opacity .2s; } }
 </style>
@@ -108,7 +112,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
   <header>
     <span class="meta">doran-doran · 2026-11-09 기준 · 실제로 돌고 있는 구성 (목표 구성은 docs/infrastructure.md)</span>
     <h1>도란도란 시스템 지도</h1>
-    <p class="lede">부모 목소리로 동화를 읽어 주는 서비스가 지금 어떻게 돌아가는지. 앱은 API에만 말을 걸고, 녹음과 생성된 소리는 S3 서명 URL로 직접 오가며, GPU 작업은 디스패처가 Modal에 맡긴다. 구성요소를 누르면 설명이, 아래 흐름을 고르면 순서대로 경로가 켜진다.</p>
+    <p class="lede">부모 목소리로 동화를 읽어 주는 서비스가 지금 어떻게 돌아가는지. 앱은 API에만 말을 걸고, 녹음과 생성된 소리는 S3 서명 URL로 직접 오가며, GPU 작업은 디스패처가 Modal에 맡긴다. 구성요소·S3 버킷을 누르면 설명이, 아래 흐름의 단계를 누르면 경로가 켜지고 오른쪽에 그 단계의 상세 설명이 나온다.</p>
     <div class="legend" aria-label="범례">
       <span><i class="dot" style="background:var(--ok)"></i>✅ 구현·동작</span>
       <span><i class="dot" style="background:var(--part)"></i>🟡 부분·mock·dev 전용</span>
@@ -154,7 +158,8 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <p><b>EC2는 검증용이다.</b> 운영 구성(도메인·HTTPS·사설 DB)은 다음 단계다.</p>
       <p><b>GPU는 쓸 때만 뜬다.</b> Modal 서버리스 T4, 동시 1대, 유휴 60초 뒤 종료. 첫 작업은 컨테이너가 뜨는 시간이 붙는다.</p>
       <p><b>성우 낭독은 실제 녹음이다.</b> 동화 8편은 녹음을 Modal에서 받아쓰고 EC2 컨테이너에서 문장별로 잘라 넣었다. 기계 합성(Supertonic 3)은 2026-11-07 제거.</p>
-      <p><b>점선 상자는 아직 없는 것.</b> 그림 엔진(새 동화 표지가 없다), BGM·효과음(선택), CDN(운영 전환 때). 연결 방법은 각 상자를 눌러 보기.</p>
+      <p><b>점선 상자는 아직 없는 것.</b> 그림 엔진(초기 스튜디오가 PC에서 쓰던 ComfyUI — Modal로 옮길 예정), BGM·효과음(선택), CDN(운영 전환 때). 연결 방법은 각 상자를 눌러 보기.</p>
+      <p><b>스튜디오는 클라우드로 옮기는 중.</b> 음성 실험실만 API·S3로 돌고, 원고 DB·파일·낭독/그림 후보·발행은 아직 개발자 PC에 묶여 있다 — <code>docs/studio-cloud-migration.md</code>.</p>
       <p><b>계약은 api-spec.</b> 작업 페이로드(§11)·타임라인 단어 <code>{w, s, e}</code>를 Worker와 앱이 함께 지킨다.</p>
     </div>
   </section>
@@ -166,32 +171,42 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 const G = [
   { x: 540, y: 18, w: 380, h: 560, t: 'AWS EC2 · dev 1대', s: 'docker compose · t3.micro · 서울' },
   { x: 1000, y: 18, w: 240, h: 512, t: 'Modal · 서버리스 GPU', s: 'T4 · 동시 1대 · 유휴 60초 종료' },
-  { x: 240, y: 630, w: 1000, h: 140, t: 'AWS S3 · 서울 · 버킷 7개(dev)', s: '퍼블릭 차단 · 서명 URL로만 · 앱·Worker는 AWS 키 없음' },
+  { x: 240, y: 630, w: 1000, h: 140, t: 'AWS S3 · 서울 · 버킷 7개(dev)', s: '퍼블릭 차단 · 서명 URL로만 · 앱·Worker는 AWS 키 없음 · 버킷을 누르면 설명' },
 ];
 const N = [
   { id: 'parent', x: 20, y: 90, w: 150, h: 70, fill: '--peach', t: '보호자 · 아이', s: '녹음 · 듣기 · 질문', st: 'ok',
     d: '부모가 목소리를 녹음하고, 아이와 동화를 듣는다. 앱에서 피드백 버튼으로 화면·컴포넌트와 함께 의견을 남긴다.', k: [['쓰는 곳', 'iOS·Android(Expo Go)·웹']] },
   { id: 'staff', x: 20, y: 300, w: 150, h: 70, fill: '--peach', t: '직원 · 작가', s: '원고 · 음성 실험', st: 'ok',
-    d: '동화 원고를 만들고 검수·발행하며, 음성 모델을 나란히 비교한다.', k: [['쓰는 곳', '스튜디오(웹)']] },
+    d: '동화 원고를 만들고 검수·발행하며, 음성 모델을 나란히 비교한다. 성우 녹음 원본은 지금 스튜디오 화면이 아니라 사람이 S3에 직접 복사한다.', k: [['쓰는 곳', '스튜디오(웹)']] },
   { id: 'app', x: 240, y: 80, w: 200, h: 92, fill: '--butter', t: '도란도란 앱', s: 'Expo SDK 58 · RN 0.88', key: 'doran-app', st: 'part',
     d: '가입·로그인, 목소리 녹음, 모델 고르기(읽어 주는 목소리 / 성우 낭독에 내 음색), 동화 재생·자막·질문, 피드백. 설정은 API 주소 하나(EXPO_PUBLIC_API_URL) — 비밀 키 없음.',
     k: [['저장소', 'vision-ground/doran-doran-app'], ['상태', '흐름 동작 · 소셜 로그인·스토어 결제는 dev 로그인·mock'], ['문서', 'docs/screen-spec.md']] },
   { id: 'studio', x: 240, y: 300, w: 200, h: 84, fill: '--butter', t: '스튜디오', s: 'Next.js 16 · 서버 액션', key: 'doran-doran-studio', st: 'part',
-    d: '원고 제작·검수·발행과 음성 실험실(/voice-lab). 실험 데이터·작업은 API(/admin/lab)가 갖는다.', k: [['저장소', 'doran-doran-studio'], ['상태', '실험실 브라우저 업로드 끝까지는 미확인']] },
-  { id: 'cdb', x: 240, y: 404, w: 200, h: 56, fill: '--pink', t: '콘텐츠 DB', s: 'PGlite(로컬) / Supabase', st: 'part',
-    d: '스튜디오 원고·버전. 서비스 DB(MariaDB)와 따로 있다 — 통합은 별도 결정.', k: [['연결', '스튜디오만']] },
+    d: '원고 제작·검수·발행과 음성 실험실(/voice-lab). 지금 클라우드로 도는 것은 실험실뿐이다 — 실험 데이터·작업은 API(/admin/lab)가 갖고 녹음은 S3에 서명 URL로 올린다. 나머지(원고 DB·올린 파일·낭독 후보·그림 후보·발행)는 아직 개발자 PC에 묶여 있어 클라우드로 옮긴다. 받을 API(/admin/studio — 원고·검수·발행·업로드·성우 녹음, MariaDB 014)는 준비됐고 스튜디오 화면 전환이 진행 중이다.',
+    k: [['저장소', 'doran-doran-studio'],
+        ['로컬에 묶인 것', '원고 DB(PGlite 폴더) · 올린 그림(.doran/uploads) · 낭독 후보(로컬 Supertonic — 11-07 은퇴) · 그림 후보(PC의 ComfyUI) · 발행(로컬 out/ 폴더, 받는 서버 없음)'],
+        ['이미 클라우드', '음성 실험실(/admin/lab) · 장면 연출 문장(Claude API)'],
+        ['API 준비됨', '/admin/studio (src/studio·src/narration) — 스튜디오 전환 중'],
+        ['이전 계획', 'docs/studio-cloud-migration.md']] },
+  { id: 'cdb', x: 240, y: 404, w: 200, h: 56, fill: '--pink', t: '콘텐츠 DB', s: 'PGlite(로컬) · MariaDB로 합칠 예정', st: 'part',
+    d: '파일 보관소가 아니라 원고 작업 기록 DB다 — 초안·수정 이력·댓글·검수 요청과 결정·버전·라이브러리(14개 테이블)와 "작가 본인은 승인 못 함" 같은 규칙. 이런 관계형 기록은 S3(파일 보관)로 대신할 수 없다. 지금은 개발자 PC의 PGlite 폴더뿐이고 Supabase는 연결된 적 없다. 서비스 DB(MariaDB)에 이미 동화·버전·장면·발행이 있으므로 따로 둘 필요 없이 MariaDB로 합친다.',
+    k: [['연결', '스튜디오만'], ['이전', 'docs/studio-cloud-migration.md W1']] },
   { id: 'ext', x: 240, y: 490, w: 200, h: 92, fill: '--card', t: '외부 연동', s: '결제 · 메일 · 이벤트', st: 'part',
     d: '어댑터로 바꿔 끼운다. 지금 dev는 결제 mock, 메일 mock(인증 코드를 화면에 표시), 이벤트는 파일. Toss·Apple·Google 검증 코드는 있으나 실제 키로는 미검증, SES는 계획.',
     k: [['결제', 'mock 🟡 (Toss·StoreKit·Play 코드 있음)'], ['메일', 'mock ⬜ SES 계획'], ['이벤트', 'file 🟡 · Firehose 코드 있음']] },
   { id: 'caddy', x: 560, y: 64, w: 340, h: 50, fill: '--card', t: 'Caddy', s: '리버스 프록시 → api:3000', st: 'part',
     d: 'EC2 앞단 리버스 프록시. 도메인·자동 TLS는 운영 전환 때.', k: [] },
-  { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 115개', key: 'src/', st: 'ok',
-    d: '모든 비즈니스 규칙의 한 곳. 인증(ES256)·검증(zod)·멱등 키·요청 한도, 목소리·동화·결제·재생·학습, 작업 큐 등록, Worker 결과 검증(sha256). 개발 API는 그림 주소를 요청 주소로 만들고, 그림 파일은 S3 content 버킷 서명 URL로 넘긴다(302).',
-    k: [['저장소', 'doran-doran src/ (모듈 19개)'], ['로컬', 'PORT=3100 · npm run dev:restart'], ['문서', 'docs/api-spec.md · docs/architecture.md']] },
-  { id: 'disp', x: 560, y: 310, w: 340, h: 76, fill: '--sky', t: '디스패처', s: '별도 프로세스 · 2초 루프 · 1시간 정리 배치', key: 'src/dispatcher', st: 'ok',
-    d: '큐에서 작업을 점유(SKIP LOCKED)해 페이로드(서명 URL 2시간)를 만들고 Modal에 제출, 10초마다 결과를 폴링해 API 콜백으로 되돌린다. 1시간마다 삭제 예약 파일 영구 삭제·탈퇴 정리 등.',
-    k: [['GPU 경로', 'GPU_INFERENCE_PROVIDER=modal (family → Modal 앱)'], ['타임아웃', 'heartbeat 90초 · 재시도 30초→2분→8분']] },
-  { id: 'db', x: 560, y: 420, w: 225, h: 96, fill: '--pink', t: 'MariaDB 11.8', s: '회원·목소리·작업 큐·결제·학습', key: 'migrations 001–013', st: 'ok',
+  { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 143개', key: 'src/', st: 'ok',
+    d: '모든 비즈니스 규칙의 한 곳. 인증(ES256)·검증(zod)·멱등 키·요청 한도, 목소리·동화·결제·재생·학습, 작업 큐 등록, Worker 결과 검증(sha256). 녹음·음성 파일은 직접 받지 않고 S3 서명 URL을 내준다. 개발 API는 그림 주소를 요청 주소로 만들고, 그림 파일은 S3 content 버킷 서명 URL로 넘긴다(302).',
+    k: [['저장소', 'doran-doran src/ (모듈 21개)'], ['로컬', 'PORT=3100 · npm run dev:restart'], ['문서', 'docs/api-spec.md · docs/architecture.md']] },
+  { id: 'disp', x: 560, y: 310, w: 340, h: 76, fill: '--sky', t: '디스패처', s: '별도 프로세스 · 2초마다 · 1시간마다 정리', key: 'src/dispatcher', st: 'ok',
+    d: 'API와 같은 이미지로 따로 늘 떠 있는 프로세스. API가 부르지 않는다 — API는 작업 큐(voice_jobs)에 할 일을 적을 뿐이고, 디스패처가 2초마다 큐를 보고 일을 가져간다. 가져갈 때 그 줄을 잠가(SKIP LOCKED) 다른 디스패처가 같은 일을 못 가져가게 하고, 서명 URL(2시간)을 담은 작업지시서를 만들어 Modal에 맡긴다. 10초마다 Modal에 끝났는지 묻고, 결과를 API 내부 주소로 알려 준다(콜백).',
+    k: [['2초마다', '① 90초 넘게 소식 없는 작업 실패 처리 ② 대기 작업 최대 5개 가져가 Modal에 맡기기(POST /submit, 서명) ③ 10초가 지났으면 맡긴 작업 확인(GET /result)'],
+        ['콜백', '디스패처 → API POST /internal/gpu/callback (HMAC 서명, ±5분)'],
+        ['재시도', '30초 → 2분 → 8분, 3번 실패하면 dead'],
+        ['1시간마다 정리', '삭제 예약 파일 S3에서 영구 삭제 · 탈퇴 30일 지난 회원 개인정보 지우기 · 지운 목소리의 클립 · 만료 이용권 · 24시간 지난 멱등 키 · 만료 30일 지난 로그인 토큰 · 1일 넘게 등록 안 된 녹음 업로드 · 보내지 않은 아이 답 업로드 · 이벤트 다시 보내기 · 큐가 10분 넘게 밀리면 경고'],
+        ['GPU 경로', 'GPU_INFERENCE_PROVIDER=modal (모델 family → Modal 앱)']] },
+  { id: 'db', x: 560, y: 420, w: 225, h: 96, fill: '--pink', t: 'MariaDB 11.8', s: '회원·목소리·작업 큐·결제·학습', key: 'migrations 001–014', st: 'ok',
     d: '서비스 상태와 작업 큐(voice_jobs)를 함께 둔다(ORM 없이 SQL). 마이그레이션 머리말에 되돌리는 SQL. 동화 숨김은 stories.status=archived.', k: [['로컬', 'Docker doran-doran-mariadb-1 (53306)'], ['백업', 'npm run db:backup · 배포 때 자동']] },
   { id: 'job', x: 800, y: 420, w: 100, h: 96, fill: '--card', t: '배치 작업', s: '필요할 때만', key: '실행 후 삭제', st: 'ok',
     d: '서버에 늘 떠 있는 프로세스가 아니라, 데이터 작업이 필요할 때 API와 같은 이미지로 잠깐 띄우고 끝나면 지우는 컨테이너(docker run --rm). EC2 안에서 돌아 서버 DB·S3를 그대로 쓴다.',
@@ -208,69 +223,118 @@ const N = [
     d: '부모 녹음(전사 포함)을 참조로 글을 직접 읽는다. 선택 전 기본 모델.', k: [['입력', '참조 녹음 + 대본 문장'], ['출력', '문장 오디오 · 전체 오디오 · 타임라인']] },
   { id: 'svc', x: 1015, y: 158, w: 210, h: 62, fill: '--mint', t: '성우 낭독에 내 음색', s: 'Seed-VC V2 · 음성 변환', key: 'doran-voice-worker-seed_vc', st: 'ok',
     d: '성우 낭독(녹음)의 문장 오디오를 부모 음색으로 바꾼다. 성우 녹음이 있는 동화(8편)에서만. 출력은 클리핑 전에 음량을 맞춘다.', k: [['입력', '문장별 source_audio_url + 부모 참조'], ['대체', '낭독 없는 동화는 기본 모델로']] },
-  { id: 'stt', x: 1015, y: 234, w: 210, h: 62, fill: '--mint', t: '받아쓰기', s: 'faster-whisper large-v3', key: 'doran-stt', st: 'ok',
-    d: '성우 녹음을 단어 시각까지 받아쓴다. 새 녹음 동화를 등록할 때만 부른다(호출만 PC/서버, 처리는 Modal).', k: [['실행', 'npm run narration:transcribe'], ['결과', 'S3 content/narration/stt/']] },
-  { id: 'beep', x: 1015, y: 310, w: 210, h: 46, fill: '--card', t: 'beep', s: '배관 확인용 · 테스트 낭독 모델', st: 'ok',
-    d: '신호음을 만드는 가짜 엔진. 파이프라인 점검과 E2E 테스트용.', k: [] },
+  { id: 'stt', x: 1015, y: 234, w: 210, h: 62, fill: '--mint', t: '받아쓰기', s: 'faster-whisper large-v3 · 작업 transcribe', key: 'doran-voice-worker-whisper', st: 'ok',
+    d: '성우 녹음을 글로 받아쓰면서 단어마다 시작·끝 시간(초)도 함께 받는다(word_timestamps). 이 시간으로 문장 경계를 정해 녹음을 문장별로 자르고, 앱 자막이 단어를 하나씩 켜는 {w, s, e}(ms)를 만든다. 11-09부터 작업 종류 transcribe — voice_jobs → 디스패처 → Modal(T4) → S3, 콜백이 sha256을 확인해 narrations(또는 스튜디오 자산)에 기록한다. 일회성 앱 doran-stt·narration:transcribe 스크립트는 지웠다. 기계로 만든 음성의 단어 시간은 받아쓰기가 아니라 글자 수 비례로 나눈다.',
+    k: [['결과 예', '{"word": "옛날", "start": 1.20, "end": 1.58}'], ['실측', 'ko-1(6분 25초) GPU 34초 · 제출→완료 47초'], ['결과', 'S3 content/narration/stt/{narration}/{job}-a{attempt}/{item}.json · studio/stt/{asset}/{revision}/{job}-a{attempt}.json']] },
+  { id: 'beep', x: 1015, y: 310, w: 210, h: 46, fill: '--card', t: 'beep', s: '파이프라인 점검용 · 테스트 전용 엔진', st: 'ok',
+    d: '글 길이만큼 신호음을 내는 가짜 엔진. GPU·모델 없이 빠르고 늘 같은 결과라, 큐 → 디스패처 → Modal → S3 → 콜백 전체 경로가 도는지 점검하고 E2E·Worker 테스트를 돌릴 때 쓴다(작업당 $0.001 미만). 부모의 모델 고르기 화면에는 나오지 않는다.',
+    k: [['필요한가', '필요 — 테스트·배관 점검용. 사용자 기능은 아니다'], ['남은 구멍', 'API가 모델 id만 알면 beep도 고를 수 있게 받아 준다 (tasks.md)']] },
   // 계획(⬜): 지금은 없지만 필요한 것 — 팀원 목표 구성안·docs/infrastructure.md에서 가져옴
-  { id: 'img', x: 1015, y: 380, w: 210, h: 58, fill: '--card', t: '그림 엔진', s: 'ComfyUI · 표지·장면 그림', key: 'doran-doran-image-engine', st: 'todo',
-    d: '새 동화 그림을 자동으로 만드는 엔진은 아직 없다. 지금 녹음 동화 8편의 그림(표지 8·커다란 순무 장면 10)은 Figma AI로 만들어 S3 content 버킷 images/{slug}/에 올리고 배치 작업(attach-images)으로 DB에 연결했다.', k: [['필요한 일', '그림 작업 종류 추가 → content 버킷 → attach-images']] },
+  { id: 'img', x: 1015, y: 380, w: 210, h: 58, fill: '--card', t: '그림 엔진', s: 'ComfyUI · FLUX 3 Klein · 작업 image', key: 'doran-voice-worker-comfy_flux', st: 'todo',
+    d: '스튜디오 초기 버전이 쓰던 엔진이 맞다 — ComfyUI 포크(doran-doran-image-engine)로, 스튜디오가 개발자 GPU PC에서 FLUX klein(+Qwen3-VL 인코더)으로 표지·장면 후보를 만들었다. 11-09에 Modal 앱 doran-voice-worker-comfy_flux(L4, 동시 1대, 유휴 120초)와 작업 종류 image를 만들었지만, 가중치(Hugging Face 게이트 저장소)를 아직 볼륨에 받지 못해 실제 그림 생성은 확인 전이다. 지금 녹음 동화 8편의 그림(표지 8·커다란 순무 장면 10)은 Figma AI로 만들어 S3 content 버킷 images/{slug}/에 올리고 배치 작업(attach-images)으로 DB에 연결했다.',
+    k: [['모델', 'FLUX klein int8 · SDXL+IP-Adapter(초기) · RealESRGAN 확대'], ['막힌 것', 'Modal 비밀(HF_TOKEN) + 라이선스 동의 → prepare_models --only flux3-image-klein-comfy'], ['결과', 'S3 content/studio/image/{asset}/{revision}/{job}-a{attempt}.png → studio_assets 후보']] },
   { id: 'bgm', x: 1015, y: 452, w: 210, h: 56, fill: '--card', t: 'BGM · 효과음', s: '배경음·효과음 생성 (선택)', st: 'todo',
     d: '동화 분위기 배경음과 효과음. 타임라인 cues·story_versions.audio_assets 자리는 이미 있다.', k: [['우선순위', '선택 — 표지 그림 다음']] },
   { id: 'cdn', x: 1095, y: 638, w: 130, h: 46, fill: '--card', t: 'CDN', s: 'CloudFront · 계획', st: 'todo',
-    d: '공개 콘텐츠(그림·샘플 낭독)를 CDN으로. 지금은 API가 그림을 S3 서명 URL로 넘기고(302) 오디오도 S3 서명 URL. 운영 전환 때 CONTENT_BASE_URL을 CDN으로.', k: [['문서', 'docs/infrastructure.md §5']] },
+    d: 'S3 앞에 서는 캐시 서버. 사용자가 CDN에 요청하면 가까운 엣지에 있으면 바로 주고, 없으면 S3에서 가져와 담아 둔다. 지금은 API가 그림을 S3 서명 URL로 넘기고(302) 오디오도 S3 서명 URL이라 dev에는 없어도 된다. 운영 전환 때 공개 그림부터(CONTENT_BASE_URL), 재생은 CloudFront 서명 URL로.',
+    k: [['장점', '가까운 엣지에서 빠름 · S3 직접 전송보다 전송비 저렴, 반복 요청은 S3까지 안 감 · 공개(그림)·서명(재생) 정책과 HTTPS 도메인을 한 곳에서'],
+        ['단점', '설정·OAC·서명 키 관리 · 캐시 무효화 신경(버전 경로라 적음) · 부모 녹음·생성 음성은 캐시 정책을 조심 · 사용자가 적을 땐 이득 작음'],
+        ['문서', 'docs/infrastructure.md §5']] },
 ];
+// S3 버킷: [이름, 짧은 설명, 상세, 표 행, 켤 화살표]
 const B = [
-  ['voice-raw', '부모 녹음'], ['renditions', '생성 음성'], ['content', '그림·성우'], ['child-voice', '아이 답'],
-  ['feedback', '스크린샷'], ['models', '모델'], ['training', '학습(계획)'],
+  ['voice-raw', '부모 녹음', '부모 목소리 녹음 원본. 앱이 API에서 받은 서명 URL(15분)로 직접 올리고, API가 받아 품질 검사를 하고, Worker가 참조 음성으로 읽는다. 음성 실험실 자료도 여기.',
+    [['키', 'users/{uid}/voices/{pid}/samples/{uploadId}.{ext} · lab/assets/'], ['쓰기', '앱 (서명 PUT, 최대 10MB)'], ['읽기', 'API(검사) · Modal Worker(참조 GET)'], ['보호', 'KMS 암호화 · 버전 관리']], ['app-s3', 'api-s3', 'modal-s3']],
+  ['renditions', '생성 음성', '만든 음성: 동화 전체 오디오·타임라인(timeline.json)·문장 오디오·미리듣기. 성우 녹음 동화를 문장별로 자른 파일(narration/)도 여기.',
+    [['키', '{rendition}/audio · timeline.json · segments/ · narration/{slug}/{hash}/'], ['쓰기', 'Modal Worker(결과 PUT) · 배치 작업(녹음 자르기)'], ['읽기', '앱(재생 GET 1시간) · API(sha256 검증) · Worker(재사용 문장·Seed-VC 원본)']], ['modal-s3', 'api-s3', 'app-s3', 'job-s3']],
+  ['content', '그림·성우', '동화 그림(표지·장면·scenes.json)과 성우 녹음 원본·받아쓰기 결과. 관리자가 올리는 동화 버전 자료도 여기.',
+    [['키', 'images/{slug}/ · narration/source/ · narration/stt/ · stories/{id}/{version}/'], ['쓰기', '관리자(지금은 손으로 복사) · 받아쓰기 스크립트'], ['읽기', 'API(그림 302) · 배치 작업 · Modal 받아쓰기']], ['api-s3', 'job-s3', 'modal-s3']],
+  ['child-voice', '아이 답', '아이가 질문에 답한 녹음. 앱이 서명 URL로 올린다(최대 5MB).',
+    [['읽기', 'API'], ['정리', '보내지 않은 업로드는 1시간 뒤 삭제 · 안전 수명 주기'], ['보호', 'KMS 암호화']], ['app-s3', 'api-s3']],
+  ['feedback', '스크린샷', '앱 피드백 버튼으로 보낸 화면 스크린샷.', [['쓰기', '앱 (서명 PUT)'], ['읽기', 'API · 피드백 보고서 스크립트']], ['app-s3', 'api-s3']],
+  ['models', '모델', '부모별 적응 모델(adapters/…)과 기본 체크포인트 보관용. 지금 쓰는 기본 모델 가중치는 Modal 볼륨(doran-models)에 있다.', [['보호', '버전 관리']], ['modal-s3']],
+  ['training', '학습(계획)', '학습에 동의한 녹음의 복사본. 복사 코드는 아직 없다(계획).', [['보호', '버전 관리 · KMS 암호화']], []],
 ];
 const E = [
   // 세로선은 30px 이상 띄운다(가독성) — 클라이언트↔서버 사이 x=470·500·530, 서버↔GPU 사이 x=950
   { id: 'u-app', f: 'parent', t: 'app', d: 'M170 125 L240 125', l: '' },
   { id: 'u-studio', f: 'staff', t: 'studio', d: 'M170 335 L240 335', l: '' },
   { id: 'app-api', f: 'app', t: 'caddy', d: 'M440 102 L560 102', l: 'HTTPS JSON', lx: 500, ly: 94 },
-  { id: 'studio-api', f: 'studio', t: 'caddy', d: 'M440 320 L470 320 L470 80 L560 80', l: '/admin/lab', lx: 464, ly: 210, rot: -90 },
+  { id: 'studio-api', f: 'studio', t: 'caddy', d: 'M440 320 L470 320 L470 80 L560 80', l: '/admin/studio · /admin/lab', lx: 464, ly: 210, rot: -90 },
   { id: 'studio-cdb', f: 'studio', t: 'cdb', d: 'M340 384 L340 404', l: '' },
   { id: 'caddy-api', f: 'caddy', t: 'api', d: 'M730 114 L730 150', l: '' },
   { id: 'api-ext', f: 'api', t: 'ext', d: 'M560 240 L500 240 L500 536 L440 536', l: '결제·메일·이벤트', lx: 494, ly: 400, rot: -90 },
   { id: 'api-db', f: 'api', t: 'db', d: 'M560 262 L530 262 L530 468 L560 468', l: 'SQL · 작업 등록', lx: 524, ly: 370, rot: -90 },
-  { id: 'disp-db', f: 'disp', t: 'db', d: 'M670 386 L670 420', l: '작업 점유', lx: 678, ly: 408, anchor: 'start' },
+  { id: 'disp-db', f: 'disp', t: 'db', d: 'M670 386 L670 420', l: '작업 가져가기', lx: 678, ly: 408, anchor: 'start' },
   { id: 'disp-api', f: 'disp', t: 'api', d: 'M840 310 L840 270', l: '콜백', lx: 848, ly: 294, anchor: 'start' },
-  { id: 'disp-modal', f: 'disp', t: 'modal', d: 'M900 348 L1000 348', l: '제출·폴링', lx: 975, ly: 340, anchor: 'middle' },
+  { id: 'disp-modal', f: 'disp', t: 'modal', d: 'M900 348 L1000 348', l: '맡기기·확인', lx: 975, ly: 340, anchor: 'middle' },
   { id: 'api-s3', f: 'api', t: 's3', d: 'M900 196 L950 196 L950 630', l: '서명 URL · 결과 검증', lx: 958, ly: 470, rot: 90 },
   { id: 'app-s3', f: 'app', t: 's3', d: 'M240 150 L205 150 L205 660 L240 660', l: '녹음 PUT · 재생 GET', lx: 199, ly: 420, rot: -90, dash: true },
   { id: 'modal-s3', f: 'modal', t: 's3', d: 'M1060 530 L1060 630', l: '참조 GET · 결과 PUT', lx: 1068, ly: 586, anchor: 'start', dash: true },
   { id: 'job-s3', f: 'job', t: 's3', d: 'M850 516 L850 630', l: '녹음 자르기', lx: 858, ly: 592, anchor: 'start', dash: true },
   { id: 'job-db', f: 'job', t: 'db', d: 'M800 468 L785 468', l: '' },
 ];
-// ---- 흐름 (단계마다 켜질 경로·구성요소) ----
-// 단계: [설명, 켜질 화살표, 함께 강조할 GPU 상자]. 화살표 양 끝 상자는 자동으로 켜진다(edgeNodes)
+// ---- 흐름 (단계마다 켜질 경로·구성요소·상세) ----
+// 단계: [설명, 켜질 화살표, 함께 강조할 상자, 상세 {d: 문단, k: [[항목, 값]]}]. 화살표 양 끝 상자는 자동으로 켜진다(edgeNodes)
 const API = ['app-api', 'caddy-api']; // 앱 → Caddy → API는 늘 함께
+const DISPATCH = { d: '디스패처는 API와 따로 늘 떠 있는 프로세스라 시작 신호를 기다리지 않는다. API는 디스패처를 부르지 않고 작업 큐(voice_jobs)에 queued 줄을 적을 뿐이다. 디스패처가 2초마다 큐를 보다가 그 줄을 가져간다.',
+  k: [['가져가기(잠금)', 'SELECT … FOR UPDATE SKIP LOCKED — 한 디스패처가 잡은 줄은 다른 디스패처가 건너뛴다. 상태 queued → dispatched, 시도 횟수 +1, 한 번에 최대 5개'],
+      ['작업지시서', '문장·감정·속도, 참조 녹음 GET URL, 결과를 올릴 PUT URL(모두 서명 2시간), 콜백 주소'],
+      ['맡기기', 'Modal 웹 주소 POST /submit (HMAC 서명) → Modal이 함수를 띄우고(spawn) 호출 ID를 돌려준다 → provider_job_id로 저장'],
+      ['어느 Modal 앱', '모델 family로 고른다 (GPU_MODAL_ENDPOINTS)']] };
+const POLL = { d: '두 층에서 확인한다. 디스패처는 Modal에 "끝났나?"를 10초마다 묻고(GET /result?id=호출 ID), 앱은 API에 작업 상태를 2초마다 묻는다(GET /v1/voice-jobs/:id). 디스패처가 받은 소식은 API 내부 주소로 알려 준다 — 이것이 콜백이다. 기다림의 상한은 디스패처가 아니라 Modal 함수 시간 제한(15분)이다.',
+  k: [['Modal 답 running', '진행 콜백 → heartbeat 갱신 (90초 넘게 소식이 없으면 실패 처리)'],
+      ['Modal 답 done', 'Worker가 남긴 이벤트(진행·문장·완료)를 순서대로 콜백'],
+      ['Modal 답 failed', '실패 콜백 → 30초 → 2분 → 8분 뒤 다시, 3번 실패하면 dead'],
+      ['콜백', 'POST /internal/gpu/callback · HMAC 서명(±5분) · 오래된 시도는 무시'],
+      ['API 검증', '전체 오디오 HEAD(1KB 이상)·내려받아 sha256 비교 → 타임라인 sha256과 형식(schema 1·문장 목록·길이) → 문장 파일이 모두 있는지'],
+      ['통과하면 (한 트랜잭션)', '생성 음성 준비됨(voice_renditions.status=ready) · 작업 succeeded · 이용권 사용 +1'],
+      ['앱', '작업이 succeeded면 재생 화면으로']] };
 const F = {
   voice: { name: '목소리 등록 · 모델 고르기', steps: [
-    ['부모가 앱에서 안내 문장을 녹음한다', ['u-app'], []],
-    ['앱이 API에서 업로드 URL을 받아 녹음을 S3(voice-raw)에 직접 올린다', [...API, 'app-s3'], []],
-    ['등록 요청 → API가 S3에서 녹음을 받아 품질 검사(길이·무음·클리핑·SNR), 통과하면 ready', [...API, 'api-s3', 'api-db'], []],
-    ['S08 "두 가지로 들어보기" → 후보 모델마다 미리듣기 작업을 큐(voice_jobs)에 등록', [...API, 'api-db'], []],
-    ['디스패처가 작업을 점유해 Modal에 제출', ['disp-db', 'disp-modal'], ['qwen', 'svc']],
-    ['Worker가 녹음(·성우 원본)을 S3에서 받아 만들고 결과를 S3에 올린다', ['modal-s3'], ['qwen', 'svc']],
-    ['디스패처가 Modal을 폴링해 결과를 받아 API 콜백으로 되돌리고, API가 S3 결과를 검증해 succeeded', ['disp-modal', 'disp-api', 'api-s3', 'api-db'], ['qwen', 'svc']],
-    ['앱이 상태를 조회해 오디오를 S3에서 바로 재생, 부모가 하나를 고른다', [...API, 'app-s3'], []],
+    ['부모가 앱에서 안내 문장을 녹음한다', ['u-app'], [], { d: '안내 문장마다 최대 30초. 웹은 WAV로, 폰은 mp4(m4a)로 만든다.', k: [['화면', 'doran-app src/app/voice/[id]/record.tsx']] }],
+    ['앱이 API에서 업로드 URL을 받아 녹음을 S3(voice-raw)에 직접 올린다', [...API, 'app-s3'], [],
+      { d: '서명 URL로 직접 올리는 것은 흔한 방식이다. 앱이 API에 "올릴 자리"를 달라고 하면 API가 15분짜리 서명 PUT URL을 준다 — 어느 키에, 어떤 형식으로, 몇 바이트를 올릴지까지 서명에 들어가 있어 그 밖의 업로드는 S3가 거절한다. 녹음 바이트가 API 서버를 거치지 않아 서버 대역폭·메모리를 아끼고, 권한은 API가 그대로 쥔다.',
+        k: [['1', 'POST /v1/voice-profiles/:id/samples/upload-url {prompt_index, content_type, size_bytes}'], ['2', '앱 → S3 PUT (받은 url·headers 그대로)'], ['조건', '목소리 사용 동의 · wav/mp4/webm · 10MB 이하 · KMS 암호화 헤더']] }],
+    ['등록 요청 → API가 S3에서 녹음을 받아 품질 검사, 문장 녹음마다 통과·거절', [...API, 'api-s3', 'api-db'], [],
+      { d: '여기서는 목소리가 아직 준비되지 않는다. 문장 녹음 하나를 검사해 통과(accepted)·거절(rejected)만 정하고, 통과한 녹음 길이를 합쳐 둔다. 거절되면 이유와 한국어 안내가 앱에 나와 그 문장을 다시 녹음한다.',
+        k: [['요청', 'POST /v1/voice-profiles/:id/samples {upload_id, prompt_index}'], ['검사', '샘플레이트 16kHz 이상 · 1.5–30초 · 너무 조용하지 않게 · 클리핑 1% 이하 · 무음 60% 이하 · SNR 10dB 이상'],
+            ['DB', 'voice_samples.status = accepted / rejected · voice_profiles.total_duration_ms 다시 계산 · 파일 sha256 기록']] }],
+    ['녹음 마치기 — 통과한 녹음이 20초 이상이면 목소리가 준비된다', [...API, 'api-db'], [],
+      { d: '앱이 녹음을 마치면 finalize를 부른다. 기본 모델(따라 읽기, zero-shot)은 학습이 필요 없어 바로 준비됨(ready)이 되고, 아이의 기본 목소리로 정해진다. 적응형 모델이면 처리 중(processing)이 되고 학습(adapt) 작업이 큐에 들어간다.',
+        k: [['요청', 'POST /v1/voice-profiles/:id/finalize (여러 번 불러도 같다)'], ['조건', '통과한 녹음 합계 20초 이상']] }],
+    ['S08 "두 가지로 들어보기" → 후보 모델마다 미리듣기 작업을 큐(voice_jobs)에 등록', [...API, 'api-db'], [], { d: '후보는 읽어 주는 목소리(Qwen3-TTS)와 성우 낭독에 내 음색(Seed-VC) 두 가지. API는 큐에 queued 줄만 적고 바로 응답한다.', k: [] }],
+    ['디스패처가 2초마다 대기 작업을 가져가(잠금) Modal에 맡긴다', ['disp-db', 'disp-modal'], ['qwen', 'svc'], DISPATCH],
+    ['Worker가 녹음(·성우 원본)을 S3에서 받아 만들고 결과를 S3에 올린다', ['modal-s3'], ['qwen', 'svc'], { d: 'Worker는 AWS 키 없이 작업지시서의 서명 URL만으로 S3를 읽고 쓴다. 문장마다 만들고 이어 붙여 전체 오디오·타임라인을 올린다. GPU 컨테이너가 꺼져 있었으면 뜨는 시간이 더 걸린다.', k: [] }],
+    ['디스패처가 Modal에 끝났는지 묻고 API에 알린다(콜백) → API가 S3 결과를 검증해 준비', ['disp-modal', 'disp-api', 'api-s3', 'api-db'], ['qwen', 'svc'], POLL],
+    ['앱이 상태를 조회해 오디오를 S3에서 바로 재생, 부모가 하나를 고른다', [...API, 'app-s3'], [], { d: '앱은 작업 상태를 2초마다 묻다가 succeeded가 되면 서명 GET URL로 S3에서 바로 재생한다. 고른 모델이 그 아이의 기본 목소리가 된다.', k: [] }],
   ] },
   story: { name: '동화 끝까지 듣기', steps: [
-    ['"끝까지 듣기" — 이용권 확인 후 생성 요청(이미 만든 것이면 바로 재생)', ['u-app', ...API, 'api-db'], []],
-    ['고른 모델로 synthesize 작업 등록. Seed-VC인데 성우 낭독이 없으면 기본 모델(Qwen3)로', ['api-db'], []],
-    ['디스패처가 점유해 Modal에 제출 — Seed-VC면 문장별 성우 원본 URL도 싣는다', ['disp-db', 'disp-modal'], ['qwen', 'svc']],
-    ['Worker가 문장마다 만들고(재사용 문장은 그대로) 오디오·타임라인을 S3에 올린다', ['modal-s3'], ['qwen', 'svc']],
-    ['폴링 → 콜백 → API가 sha256·타임라인을 검증해 ready', ['disp-modal', 'disp-api', 'api-s3', 'api-db'], ['qwen', 'svc']],
-    ['앱이 오디오·자막(timeline {w,s,e})을 S3에서 받아 재생, 질문에서 멈춘다', [...API, 'app-s3'], []],
+    ['"끝까지 듣기" — 이용권 확인 후 생성 요청(이미 만든 것이면 바로 재생)', ['u-app', ...API, 'api-db'], [],
+      { d: 'API가 차례로 확인한다: 목소리 준비됨 → 목소리 사용 동의 → 이용권 → 같은 동화·목소리·모델로 이미 만든 것이 있는지(있으면 바로 재생) → 생성 한도.', k: [['요청', 'POST /v1/renditions (멱등 키)'], ['이용권 없음', 'ENTITLEMENT_REQUIRED → 구매 화면']] }],
+    ['고른 모델로 synthesize 작업 등록. Seed-VC인데 성우 낭독이 없으면 기본 모델(Qwen3)로', ['api-db'], [],
+      { d: '생성 음성 줄(voice_renditions, 처리 중)과 작업 줄(voice_jobs, queued)을 함께 넣고 202로 작업 ID를 돌려준다. 앱은 "만드는 중" 화면으로 간다.', k: [] }],
+    ['디스패처가 가져가(잠금) Modal에 맡긴다 — Seed-VC면 문장별 성우 원본 URL도 싣는다', ['disp-db', 'disp-modal'], ['qwen', 'svc'], DISPATCH],
+    ['Worker가 문장마다 만들고(재사용 문장은 그대로) 오디오·타임라인을 S3에 올린다', ['modal-s3'], ['qwen', 'svc'],
+      { d: '같은 목소리·같은 문장으로 이미 만든 문장은 작업지시서에 재사용 URL이 실려 와 다시 만들지 않는다. 질문 문장에는 타임라인에 멈춤 표시(pause: {wait_for: "answer"})를 붙인다.', k: [] }],
+    ['디스패처가 Modal에 끝났는지 묻고 API에 알린다(콜백) → API가 검증해 재생할 수 있게 준비', ['disp-modal', 'disp-api', 'api-s3', 'api-db'], ['qwen', 'svc'], POLL],
+    ['앱이 오디오·자막(timeline {w,s,e})을 S3에서 받아 재생, 질문에서 멈춘다', [...API, 'app-s3'], [],
+      { d: '재생 화면이 열릴 때 API에서 서명 GET URL(1시간) 두 개를 받는다 — 전체 오디오와 타임라인. 오디오는 문장별이 아니라 한 파일이고, 플레이어가 재생하면서 필요한 만큼 이어 받는다. 타임라인 JSON은 한 번 받는다. 200ms마다 현재 재생 시각으로 지금 문장과 켤 단어를 고른다.',
+        k: [['언제 GET', '재생 화면 진입: GET /v1/renditions/:id → S3 오디오(스트리밍)·타임라인(한 번)'],
+            ['자막', '지금 문장 = start_ms ≤ 현재 < end_ms · 단어는 현재 ≥ w.s 이면 켬'],
+            ['멈추는 신호', '타임라인의 질문 문장 표시 pause: {wait_for: "answer"} — 그 문장 시작 150ms 전에 질문 화면을 열고, 끝나기 80ms 전에 일시정지'],
+            ['다시 시작', '"이어서 듣기" → 질문 끝 + 650ms로 옮겨 재생 · "다시 듣기" → 질문 시작으로'],
+            ['이어 듣기', '위치를 PATCH /v1/play-sessions/:id 로 저장 → 다음에 그 자리부터']] }],
   ] },
   narr: { name: '성우 녹음 동화 등록', steps: [
-    ['성우 녹음 원본을 S3 content 버킷에 올린다(관리자)', [], ['staff']],
-    ['Modal 받아쓰기가 원본을 S3에서 읽어 단어 시각까지 받아쓰고 결과 JSON을 S3에 쓴다 (호출은 스크립트, 처리는 Modal)', ['modal-s3'], ['stt']],
-    ['EC2 배치 작업 컨테이너가 원본·받아쓰기를 받아 문장으로 나누고 문장별로 자른다', ['job-s3'], []],
-    ['동화를 게시하고 문장 오디오·전체 오디오·타임라인을 기본 성우 낭독으로 MariaDB에 등록', ['job-s3', 'job-db'], []],
-    ['앱 서재·샘플 듣기가 이 녹음을 재생하고, Seed-VC가 원본으로 쓴다', [...API, 'app-s3', 'modal-s3'], ['svc']],
+    ['성우 녹음 원본을 S3 content 버킷에 손으로 복사한다 (스튜디오 화면 없음)', [], ['staff'],
+      { d: '지금은 스튜디오가 아니라 사람이 직접 복사했다(8편, issue 2026-11-07-004). 스튜디오에 성우 낭독 업로드 화면은 없다 — 클라우드 이전 계획(W5)에서 스튜디오 화면 → S3 → 받아쓰기 작업으로 바꾼다.', k: [['위치', 'content/narration/source/myeongjak-level1/ko-1…8.mp3']] }],
+    ['Modal 받아쓰기가 원본을 S3에서 읽어 단어마다 시작·끝 시간까지 받아쓰고 결과 JSON을 S3에 쓴다', ['modal-s3'], ['stt'],
+      { d: 'transcribe 작업(voice_jobs)을 디스패처가 Modal 받아쓰기 앱으로 보낸다. 원본은 서명 GET(2시간), 결과 JSON은 서명 PUT으로 S3에. 콜백이 sha256을 확인해 storage_objects(stt_result)와 narrations에 기록한다. 결과에는 글과 함께 단어마다 시작·끝 시간(초)이 있다.', k: [['작업', 'voice_jobs kind=transcribe'], ['결과', 'content/narration/stt/{narration}/{job}-a{attempt}/{item}.json']] }],
+    ['EC2 배치 작업 컨테이너가 원본·받아쓰기를 받아 문장으로 나누고 문장별로 자른다', ['job-s3'], [],
+      { d: '문장 끝 부호(. ? ! …)나 15초에서 문장을 끊고, 너무 긴 문장은 "다·요" 같은 끝말과 쉼에서 나눈다. 문장 시작 ~ 다음 문장 시작을 ffmpeg로 잘라 문장 오디오를 만든다(모델이 아니라 일반 도구).', k: [] }],
+    ['동화를 게시하고 문장 오디오·전체 오디오·타임라인을 기본 성우 낭독으로 MariaDB에 등록', ['job-s3', 'job-db'], [], { d: '6문장씩 한 장면. 단어 시간은 받아쓰기 시간을 문장 범위에 맞춘 {w, s, e}(ms). 이 낭독은 사용자가 고를 수 없는 "녹음" 모델로 등록된다.', k: [] }],
+    ['앱 서재·샘플 듣기가 이 녹음을 재생하고, Seed-VC가 원본으로 쓴다', [...API, 'app-s3', 'modal-s3'], ['svc'], { d: '부모가 "성우 낭독에 내 음색"을 고르면 Seed-VC가 이 문장 오디오를 원본으로 부모 음색으로 바꾼다.', k: [] }],
   ] },
 };
 const NODE_IDS = new Set(N.map((n) => n.id));
@@ -281,19 +345,23 @@ const STATUS = { ok: ['✅ 구현', '--ok'], part: ['🟡 부분', '--part'], to
 const ns = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (parent) parent.appendChild(e); return e; };
 const $ = (id) => document.getElementById(id);
+const pressable = (g, fn) => { g.addEventListener('click', fn); g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); fn(); } }); };
 for (const g of G) {
   const gg = el('g', { class: 'grp' }, $('groups'));
   el('rect', { x: g.x, y: g.y, width: g.w, height: g.h, rx: 18 }, gg);
   el('text', { x: g.x + 14, y: g.y + 22 }, gg).textContent = g.t;
   el('text', { x: g.x + 14, y: g.y + 38, class: 'gsub' }, gg).textContent = g.s;
 }
-// S3 버킷: 그룹 제목 아래 한 줄
+// S3 버킷: 그룹 제목 아래 한 줄. 누르면 설명과 그 버킷을 쓰는 화살표가 켜진다
+const bucketEl = {};
 B.forEach(([name, what], i) => {
   const x = 258 + i * 118, y = 692;
-  const g = el('g', { class: 'bucket' }, $('buckets'));
+  const g = el('g', { class: 'bucket', tabindex: 0, role: 'button', 'aria-label': `S3 ${name} — ${what}` }, $('buckets'));
   el('rect', { x, y, width: 108, height: 52, rx: 10 }, g);
   el('text', { x: x + 10, y: y + 21 }, g).textContent = name;
   el('text', { x: x + 10, y: y + 39, class: 'bs' }, g).textContent = what;
+  pressable(g, () => selectBucket(name));
+  bucketEl[name] = g;
 });
 const edgeEl = {};
 for (const e of E) {
@@ -316,8 +384,7 @@ for (const n of N) {
   if (n.key && n.h > 64) el('text', { class: 'k', x: n.x + 12, y: n.y + 60 }, g).textContent = n.key;
   const [label, tok] = STATUS[n.st];
   el('circle', { cx: n.x + n.w - 14, cy: n.y + 15, r: 5.5, fill: `var(${tok})`, stroke: 'var(--ink)', 'stroke-width': 1.5 }, g).appendChild(document.createElementNS(ns, 'title')).textContent = label;
-  g.addEventListener('click', () => select(n.id));
-  g.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(n.id); } });
+  pressable(g, () => select(n.id));
   nodeEl[n.id] = g;
 }
 
@@ -331,25 +398,37 @@ function setOn(edges, nodes) {
   }
   for (const [id, g] of Object.entries(nodeEl)) g.classList.toggle('dim', !!anyN && !nodes.includes(id));
 }
-function select(id, highlight = true) {
-  const n = N.find((x) => x.id === id);
-  for (const [k, g] of Object.entries(nodeEl)) g.classList.toggle('sel', k === id);
-  const gpu = ['qwen', 'svc', 'stt', 'beep', 'img', 'bgm'].includes(id);
-  const touching = E.filter((e) => e.f === id || e.t === id || (gpu && (e.f === 'modal' || e.t === 'modal'))).map((e) => e.id);
-  if (highlight) setOn(touching, [...new Set([id, ...edgeNodes(touching)])]);
-  const [label, tok] = STATUS[n.st];
+function clearSel() { for (const g of [...Object.values(nodeEl), ...Object.values(bucketEl)]) g.classList.remove('sel'); }
+// 오른쪽 설명 칸: 구성요소·버킷·흐름 단계가 같이 쓴다
+function renderDetail(title, chipText, chipTok, text, rows) {
   const d = $('detail');
   d.innerHTML = '';
-  const h = document.createElement('h2'); h.textContent = n.t;
-  const chip = document.createElement('span'); chip.className = 'chip'; chip.style.color = `var(${tok})`; chip.textContent = label; h.appendChild(chip);
-  const p = document.createElement('p'); p.style.margin = '0'; p.textContent = n.d;
+  const h = document.createElement('h2'); h.textContent = title;
+  const chip = document.createElement('span'); chip.className = 'chip'; chip.style.color = `var(${chipTok})`; chip.textContent = chipText; h.appendChild(chip);
+  const p = document.createElement('p'); p.style.margin = '0'; p.textContent = text;
   d.append(h, p);
-  const rows = [['구성', n.s], ...(n.key ? [['위치', n.key]] : []), ...n.k];
+  if (!rows.length) return;
   const dl = document.createElement('dl');
   for (const [k, v] of rows) { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; dl.append(dt, dd); }
   d.appendChild(dl);
 }
-let flow = 'voice', step = 0, timer = null, started = false;
+function select(id, highlight = true) {
+  const n = N.find((x) => x.id === id);
+  clearSel(); nodeEl[id].classList.add('sel');
+  const gpu = ['qwen', 'svc', 'stt', 'beep', 'img', 'bgm'].includes(id);
+  const touching = E.filter((e) => e.f === id || e.t === id || (gpu && (e.f === 'modal' || e.t === 'modal'))).map((e) => e.id);
+  if (highlight) setOn(touching, [...new Set([id, ...edgeNodes(touching)])]);
+  const [label, tok] = STATUS[n.st];
+  renderDetail(n.t, label, tok, n.d, [['구성', n.s], ...(n.key ? [['위치', n.key]] : []), ...n.k]);
+}
+function selectBucket(name) {
+  stop();
+  const [, what, d, rows, edges] = B.find((b) => b[0] === name);
+  clearSel(); bucketEl[name].classList.add('sel');
+  setOn(edges, [...new Set(edgeNodes(edges))]);
+  renderDetail(`S3 · ${name}`, what, '--ok', d, [['버킷', `doran-${name}-dev`], ...rows]);
+}
+let flow = 'voice', step = 0, timer = null;
 function renderTabs() {
   const t = $('tabs'); t.innerHTML = '';
   for (const [k, f] of Object.entries(F)) {
@@ -367,13 +446,15 @@ function renderSteps() {
     ol.appendChild(li);
   });
 }
+// 단계를 고르면 경로를 켜고, 설명 칸에 그 단계의 상세를 보여 준다
 function show() {
-  started = true;
-  const s = F[flow].steps[step];
+  const [txt, edges, extra, det] = F[flow].steps[step];
+  const total = F[flow].steps.length;
   [...$('steps').children].forEach((li, i) => li.classList.toggle('on', i === step));
-  for (const g of Object.values(nodeEl)) g.classList.remove('sel');
-  setOn(s[1], [...new Set([...s[2], ...edgeNodes(s[1])])]);
-  $('pos').textContent = `${step + 1} / ${F[flow].steps.length}`;
+  clearSel();
+  setOn(edges, [...new Set([...extra, ...edgeNodes(edges)])]);
+  renderDetail(`${step + 1}단계 · ${F[flow].name}`, `${step + 1} / ${total}`, '--hi', det && det.d ? `${txt}. ${det.d}` : txt, det ? det.k : []);
+  $('pos').textContent = `${step + 1} / ${total}`;
 }
 function stop() { if (timer) { clearInterval(timer); timer = null; $('play').textContent = '▶ 순서대로'; } }
 $('prev').addEventListener('click', () => { stop(); step = (step - 1 + F[flow].steps.length) % F[flow].steps.length; show(); });
@@ -381,7 +462,8 @@ $('next').addEventListener('click', () => { stop(); step = (step + 1) % F[flow].
 $('play').addEventListener('click', () => {
   if (timer) return stop();
   $('play').textContent = '■ 멈춤';
-  timer = setInterval(() => { step = (step + 1) % F[flow].steps.length; show(); }, 2200);
+  show();
+  timer = setInterval(() => { step = (step + 1) % F[flow].steps.length; show(); }, 4000);
 });
 $('theme').addEventListener('click', () => {
   const r = document.documentElement;
@@ -389,7 +471,7 @@ $('theme').addEventListener('click', () => {
   r.dataset.theme = dark ? 'light' : 'dark';
 });
 // 처음에는 아무것도 흐리지 않는다 — 전체가 한눈에 보이게. 단계를 누르거나 ▶를 누르면 경로가 켜진다
-renderTabs(); renderSteps(); select('api', false); for (const g of Object.values(nodeEl)) g.classList.remove('sel'); $('pos').textContent = '단계를 누르거나 ▶';
+renderTabs(); renderSteps(); select('api', false); clearSel(); $('pos').textContent = '단계를 누르거나 ▶';
 </script>
 
 </body>
