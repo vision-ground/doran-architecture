@@ -106,7 +106,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 
 <div class="wrap">
   <header>
-    <span class="meta">doran-doran · 2026-11-08 기준 · 실제로 돌고 있는 구성 (목표 구성은 docs/infrastructure.md)</span>
+    <span class="meta">doran-doran · 2026-11-09 기준 · 실제로 돌고 있는 구성 (목표 구성은 docs/infrastructure.md)</span>
     <h1>도란도란 시스템 지도</h1>
     <p class="lede">부모 목소리로 동화를 읽어 주는 서비스가 지금 어떻게 돌아가는지. 앱은 API에만 말을 걸고, 녹음과 생성된 소리는 S3 서명 URL로 직접 오가며, GPU 작업은 디스패처가 Modal에 맡긴다. 구성요소를 누르면 설명이, 아래 흐름을 고르면 순서대로 경로가 켜진다.</p>
     <div class="legend" aria-label="범례">
@@ -186,7 +186,7 @@ const N = [
   { id: 'caddy', x: 560, y: 64, w: 340, h: 50, fill: '--card', t: 'Caddy', s: '리버스 프록시 → api:3000', st: 'part',
     d: 'EC2 앞단 리버스 프록시. 도메인·자동 TLS는 운영 전환 때.', k: [] },
   { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 115개', key: 'src/', st: 'ok',
-    d: '모든 비즈니스 규칙의 한 곳. 인증(ES256)·검증(zod)·멱등 키·요청 한도, 목소리·동화·결제·재생·학습, 작업 큐 등록, Worker 결과 검증(sha256). 개발 API는 그림 주소를 요청 주소로 만든다.',
+    d: '모든 비즈니스 규칙의 한 곳. 인증(ES256)·검증(zod)·멱등 키·요청 한도, 목소리·동화·결제·재생·학습, 작업 큐 등록, Worker 결과 검증(sha256). 개발 API는 그림 주소를 요청 주소로 만들고, 그림 파일은 S3 content 버킷 서명 URL로 넘긴다(302).',
     k: [['저장소', 'doran-doran src/ (모듈 19개)'], ['로컬', 'PORT=3100 · npm run dev:restart'], ['문서', 'docs/api-spec.md · docs/architecture.md']] },
   { id: 'disp', x: 560, y: 310, w: 340, h: 76, fill: '--sky', t: '디스패처', s: '별도 프로세스 · 2초 루프 · 1시간 정리 배치', key: 'src/dispatcher', st: 'ok',
     d: '큐에서 작업을 점유(SKIP LOCKED)해 페이로드(서명 URL 2시간)를 만들고 Modal에 제출, 10초마다 결과를 폴링해 API 콜백으로 되돌린다. 1시간마다 삭제 예약 파일 영구 삭제·탈퇴 정리 등.',
@@ -197,7 +197,8 @@ const N = [
     d: '서버에 늘 떠 있는 프로세스가 아니라, 데이터 작업이 필요할 때 API와 같은 이미지로 잠깐 띄우고 끝나면 지우는 컨테이너(docker run --rm). EC2 안에서 돌아 서버 DB·S3를 그대로 쓴다.',
     k: [['하는 일 ①', '서비스를 처음 켤 때 빈 DB에 기본 데이터 채우기 — 쓸 음성 모델, 앱에 보일 동화, 관리자 계정 (시드)'],
         ['하는 일 ②', '성우 녹음(6분짜리 mp3 한 덩어리)으로 새 동화 만들기 — 받아쓴 글을 문장으로 나누고, 녹음을 문장마다 잘라 작은 소리 파일로 만든 뒤, 동화와 함께 등록. 그래야 앱이 문장 자막·질문 멈춤·부모 목소리 바꾸기를 할 수 있다'],
-        ['하는 일 ③', '이미 저장된 데이터를 한꺼번에 고치기 — 예: 자막 파일 형식이 앱과 달라 자막이 안 나오던 버그 때, 이미 만들어진 자막 파일 8개를 새 형식으로 바꿈'],
+        ['하는 일 ③', '동화 그림을 DB에 연결 — S3에 올린 그림 목록(scenes.json)을 읽어 표지·장면 그림 경로를 채움 (attach-images)'],
+        ['하는 일 ④', '이미 저장된 데이터를 한꺼번에 고치기 — 예: 자막 파일 형식이 앱과 달라 자막이 안 나오던 버그 때, 이미 만들어진 자막 파일 8개를 새 형식으로 바꿈'],
         ['왜 필요한가 ①', 'EC2의 MariaDB는 외부 포트를 열지 않아 도커 내부망에서만 닿는다 — 서버 DB를 고치는 작업은 그 안에서 돌아야 한다'],
         ['왜 필요한가 ②', '서버의 DB 비밀번호·S3 권한(인스턴스 역할)을 개발자 PC로 옮기지 않고 그 자리에서 쓴다'],
         ['왜 필요한가 ③', '배포된 API와 같은 코드·같은 이미지로 돌아, 스키마·규칙이 어긋나지 않는다'],
@@ -213,11 +214,11 @@ const N = [
     d: '신호음을 만드는 가짜 엔진. 파이프라인 점검과 E2E 테스트용.', k: [] },
   // 계획(⬜): 지금은 없지만 필요한 것 — 팀원 목표 구성안·docs/infrastructure.md에서 가져옴
   { id: 'img', x: 1015, y: 380, w: 210, h: 58, fill: '--card', t: '그림 엔진', s: 'ComfyUI · 표지·장면 그림', key: 'doran-doran-image-engine', st: 'todo',
-    d: '새 동화(녹음 8편)에 표지·장면 그림이 없다 — 지금 앱에는 [표지 그림] 자리표시. 저장소는 있으나 서비스 파이프라인(작업 큐·S3 content)에 연결되지 않았다.', k: [['필요한 일', '그림 작업 종류 추가 → content 버킷 → stories.cover_url']] },
+    d: '새 동화 그림을 자동으로 만드는 엔진은 아직 없다. 지금 녹음 동화 8편의 그림(표지 8·커다란 순무 장면 10)은 Figma AI로 만들어 S3 content 버킷 images/{slug}/에 올리고 배치 작업(attach-images)으로 DB에 연결했다.', k: [['필요한 일', '그림 작업 종류 추가 → content 버킷 → attach-images']] },
   { id: 'bgm', x: 1015, y: 452, w: 210, h: 56, fill: '--card', t: 'BGM · 효과음', s: '배경음·효과음 생성 (선택)', st: 'todo',
     d: '동화 분위기 배경음과 효과음. 타임라인 cues·story_versions.audio_assets 자리는 이미 있다.', k: [['우선순위', '선택 — 표지 그림 다음']] },
   { id: 'cdn', x: 1095, y: 638, w: 130, h: 46, fill: '--card', t: 'CDN', s: 'CloudFront · 계획', st: 'todo',
-    d: '공개 콘텐츠(그림·샘플 낭독)를 CDN으로. 지금은 API가 그림을 직접 내주고 오디오는 S3 서명 URL. 운영 전환 때 CONTENT_BASE_URL을 CDN으로.', k: [['문서', 'docs/infrastructure.md §5']] },
+    d: '공개 콘텐츠(그림·샘플 낭독)를 CDN으로. 지금은 API가 그림을 S3 서명 URL로 넘기고(302) 오디오도 S3 서명 URL. 운영 전환 때 CONTENT_BASE_URL을 CDN으로.', k: [['문서', 'docs/infrastructure.md §5']] },
 ];
 const B = [
   ['voice-raw', '부모 녹음'], ['renditions', '생성 음성'], ['content', '그림·성우'], ['child-voice', '아이 답'],
