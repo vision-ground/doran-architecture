@@ -159,7 +159,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <p><b>GPU는 쓸 때만 뜬다.</b> Modal 서버리스 T4, 동시 1대, 유휴 60초 뒤 종료. 첫 작업은 컨테이너가 뜨는 시간이 붙는다.</p>
       <p><b>성우 낭독은 실제 녹음이다.</b> 동화 8편은 녹음을 Modal에서 받아쓰고 EC2 컨테이너에서 문장별로 잘라 넣었다. 기계 합성(Supertonic 3)은 2026-11-07 제거.</p>
       <p><b>점선 상자는 아직 없는 것.</b> 그림 엔진(초기 스튜디오가 PC에서 쓰던 ComfyUI — Modal로 옮길 예정), BGM·효과음(선택), CDN(운영 전환 때). 연결 방법은 각 상자를 눌러 보기.</p>
-      <p><b>스튜디오는 API만 본다.</b> 브라우저에서만 도는 정적 페이지(11-13부터 스튜디오 서버 없음). 원고·검수·발행은 MariaDB(/admin/studio), 파일은 S3, 낭독·받아쓰기·그림은 Modal 작업. 발행 내용·그림 그래프·Claude 장면 연출은 API가 만든다 — <code>docs/studio-client-split.md</code>.</p>
+      <p><b>스튜디오는 API만 본다.</b> 브라우저에서만 도는 정적 페이지(11-13부터 스튜디오 서버 없음). 원고·검수·발행은 MariaDB(/admin/studio), 파일은 S3, 낭독·받아쓰기·그림은 Modal 작업. 원고 규칙(검사·미리보기 계산)도 API가 원본을 갖고 브라우저에 내려 준다(GET /studio/rules, 이슈 113). 발행 내용·그림 그래프·Claude 장면 연출은 API가 만든다 — <code>docs/studio-client-split.md</code>.</p>
       <p><b>계약은 api-spec.</b> 작업 페이로드(§11)·타임라인 단어 <code>{w, s, e}</code>를 Worker와 앱이 함께 지킨다.</p>
     </div>
   </section>
@@ -186,13 +186,14 @@ const N = [
     k: [['저장소', 'doran-doran-studio (PR #2 머지)'],
         ['로그인', '도란 계정(이메일) + studio_staff 역할 — 첫 관리자는 scripts/studio-staff.ts'],
         ['아직', '그림 후보 생성은 Modal 가중치(Hugging Face 게이트 저장소 토큰) 대기'],
-        ['계획·계약', 'docs/studio-cloud-migration.md · docs/studio-client-split.md · docs/issues/2026-11-13-110.md']] },
+        ['원고 규칙', 'API src/studio-lib가 원본 → GET /studio/rules로 받아 브라우저에서 계산(이슈 113)'],
+        ['계획·계약', 'docs/studio-cloud-migration.md · docs/studio-client-split.md · docs/issues/2026-11-13-110.md · 113']] },
   { id: 'ext', x: 240, y: 490, w: 200, h: 92, fill: '--card', t: '외부 연동', s: '결제 · 메일 · 이벤트', st: 'part',
     d: '어댑터로 바꿔 끼운다. 지금 dev는 결제 mock, 메일 mock(인증 코드를 화면에 표시), 이벤트는 파일. Toss·Apple·Google 검증 코드는 있으나 실제 키로는 미검증, SES는 계획.',
     k: [['결제', 'mock 🟡 (Toss·StoreKit·Play 코드 있음)'], ['메일', 'mock ⬜ SES 계획'], ['이벤트', 'file 🟡 · Firehose 코드 있음']] },
   { id: 'caddy', x: 560, y: 64, w: 340, h: 50, fill: '--card', t: 'Caddy', s: '리버스 프록시 → api:3000', st: 'part',
     d: 'EC2 앞단 리버스 프록시. 도메인·자동 TLS는 운영 전환 때.', k: [] },
-  { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 164개', key: 'src/', st: 'ok',
+  { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 166개', key: 'src/', st: 'ok',
     d: '모든 비즈니스 규칙의 한 곳. 인증(ES256)·검증(zod)·멱등 키·요청 한도, 목소리·동화·결제·재생·학습, 작업 큐 등록, Worker 결과 검증(sha256). 녹음·음성 파일은 직접 받지 않고 S3 서명 URL을 내준다. 개발 API는 그림 주소를 요청 주소로 만들고, 그림 파일은 S3 content 버킷 서명 URL로 넘긴다(302).',
     k: [['저장소', 'doran-doran src/ (모듈 22개)'], ['로컬', 'PORT=3100 · npm run dev:restart'], ['문서', 'docs/api-spec.md · docs/architecture.md']] },
   { id: 'disp', x: 560, y: 310, w: 340, h: 76, fill: '--sky', t: '디스패처', s: '별도 프로세스 · 2초마다 · 1시간마다 정리', key: 'src/dispatcher', st: 'ok',
