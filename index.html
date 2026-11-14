@@ -110,7 +110,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 
 <div class="wrap">
   <header>
-    <span class="meta">doran-doran · 2026-11-13 기준 · 실제로 돌고 있는 구성 (목표 구성은 docs/infrastructure.md)</span>
+    <span class="meta">doran-doran · 2026-11-14 기준 · 실제로 돌고 있는 구성 (목표 구성은 docs/infrastructure.md)</span>
     <h1>도란도란 시스템 지도</h1>
     <p class="lede">부모 목소리로 동화를 읽어 주는 서비스가 지금 어떻게 돌아가는지. 앱은 API에만 말을 걸고, 녹음과 생성된 소리는 S3 서명 URL로 직접 오가며, GPU 작업은 디스패처가 Modal에 맡긴다. 구성요소·S3 버킷을 누르면 설명이, 아래 흐름의 단계를 누르면 경로가 켜지고 오른쪽에 그 단계의 상세 설명이 나온다.</p>
     <div class="legend" aria-label="범례">
@@ -159,7 +159,7 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
       <p><b>GPU는 쓸 때만 뜬다.</b> Modal 서버리스 T4, 동시 1대, 유휴 60초 뒤 종료. 첫 작업은 컨테이너가 뜨는 시간이 붙는다.</p>
       <p><b>성우 낭독은 실제 녹음이다.</b> 동화 8편은 녹음을 Modal에서 받아쓰고 EC2 컨테이너에서 문장별로 잘라 넣었다. 기계 합성(Supertonic 3)은 2026-11-07 제거.</p>
       <p><b>점선 상자는 아직 없는 것.</b> 그림 엔진(초기 스튜디오가 PC에서 쓰던 ComfyUI — Modal로 옮길 예정), BGM·효과음(선택), CDN(운영 전환 때). 연결 방법은 각 상자를 눌러 보기.</p>
-      <p><b>스튜디오는 API만 본다.</b> 브라우저에서만 도는 정적 페이지(11-13부터 스튜디오 서버 없음). 원고·검수·발행은 MariaDB(/admin/studio), 파일은 S3, 낭독·받아쓰기·그림은 Modal 작업. 원고 규칙(검사·미리보기 계산)도 API가 원본을 갖고 브라우저에 내려 준다(GET /studio/rules, 이슈 113). 발행 내용·그림 그래프·Claude 장면 연출은 API가 만든다 — <code>docs/studio-client-split.md</code>.</p>
+      <p><b>스튜디오는 API만 본다.</b> 브라우저에서만 도는 정적 페이지(11-13부터 스튜디오 서버 없음). 원고·검수·발행은 MariaDB(/admin/studio), 파일은 S3, 낭독·받아쓰기·그림은 Modal 작업. 원고 규칙(검사·미리보기 계산)도 API가 원본을 갖고 브라우저에 내려 준다(GET /studio/rules, 이슈 113). 발행 내용·그림 그래프·Claude 장면 연출은 API가 만든다 — <code>docs/studio-client-split.md</code>. 발행 때 문장마다 고른 성우 음성을 API 컨테이너 ffmpeg로 이어 붙여 그 판의 기본 성우 낭독(S3 renditions)으로 둔다 — 앱 기본 성우와 부모 음색 변환(Seed-VC)의 원본이 이것이 되고, TTS 기본 성우 작업은 만들지 않는다(이슈 125).</p>
       <p><b>계약은 api-spec.</b> 작업 페이로드(§11)·타임라인 단어 <code>{w, s, e}</code>를 Worker와 앱이 함께 지킨다.</p>
     </div>
   </section>
@@ -182,7 +182,7 @@ const N = [
     d: '가입·로그인, 목소리 녹음, 모델 고르기(읽어 주는 목소리 / 성우 낭독에 내 음색), 동화 재생·자막·질문, 피드백. 설정은 API 주소 하나(EXPO_PUBLIC_API_URL) — 비밀 키 없음.',
     k: [['저장소', 'vision-ground/doran-doran-app'], ['상태', '흐름 동작 · 소셜 로그인·스토어 결제는 dev 로그인·mock'], ['웹 베타', 'EC2 Caddy 정적 SPA(이슈 116) — API와 같은 사이트라 웹 refresh 쿠키가 1자 쿠키(이슈 115)'], ['문서', 'docs/screen-spec.md']] },
   { id: 'studio', x: 240, y: 300, w: 200, h: 84, fill: '--butter', t: '스튜디오', s: '정적 웹 클라이언트 · API 경유', key: 'doran-doran-studio', st: 'part',
-    d: '원고 제작·검수·발행, 그림·낭독 후보, 화풍·캐릭터 라이브러리, 성우 녹음 동화 등록, 음성 실험실. 11-13부터 브라우저에서만 도는 정적 페이지다(서버 액션·세션 쿠키 없음, 토큰은 브라우저가 갖는다) — 발행 내용(승인된 검수 스냅샷의 해시를 다시 확인)·그림 후보 기록과 ComfyUI 그래프·Claude 장면 연출은 API가 만든다. 11-09부터 모든 데이터와 작업이 API를 거친다 — 원고·검수는 MariaDB(/admin/studio), 그림·녹음은 브라우저가 S3에 서명 URL로 직접 올리고, 낭독·받아쓰기·그림 생성은 작업 큐 → 디스패처 → Modal. 개발자 PC에 묶였던 로컬 원고 DB(PGlite)·로컬 작업자·로컬 그림 엔진은 지웠다. 전체 동화에서 장면 그림·배경음악을 판으로 관리한다 — 올려서 교체·다시 만들기(모델 선택), 이전 판은 미적용으로 남고, 숨김은 앱에서만 빠지며 영구 삭제는 admin만.',
+    d: '원고 제작·검수·발행, 그림·낭독 후보, 화풍·캐릭터 라이브러리, 성우 녹음 동화 등록, 음성 실험실. 11-13부터 브라우저에서만 도는 정적 페이지다(서버 액션·세션 쿠키 없음, 토큰은 브라우저가 갖는다) — 발행 내용(승인된 검수 스냅샷의 해시를 다시 확인)·낭독·그림 후보 기록(낭독은 문장 id만 받아 저장된 원고에서)·후보 상태 전이(작가 고르기·승인자 승인, 표 밖은 막음)·ComfyUI 그래프·Claude 장면 연출은 API가 만든다. 11-09부터 모든 데이터와 작업이 API를 거친다 — 원고·검수는 MariaDB(/admin/studio), 그림·녹음은 브라우저가 S3에 서명 URL로 직접 올리고, 낭독·받아쓰기·그림 생성은 작업 큐 → 디스패처 → Modal. 개발자 PC에 묶였던 로컬 원고 DB(PGlite)·로컬 작업자·로컬 그림 엔진은 지웠다. 전체 동화에서 장면 그림·배경음악을 판으로 관리한다 — 올려서 교체·다시 만들기(모델 선택), 이전 판은 미적용으로 남고, 숨김은 앱에서만 빠지며 영구 삭제는 admin만.',
     k: [['저장소', 'doran-doran-studio (PR #2 머지)'],
         ['로그인', '도란 계정(이메일) + studio_staff 역할 — 첫 관리자는 scripts/studio-staff.ts'],
         ['아직', '그림 후보 생성은 Modal 가중치(Hugging Face 게이트 저장소 토큰) 대기'],
@@ -193,7 +193,7 @@ const N = [
     k: [['결제', 'mock 🟡 (Toss·StoreKit·Play 코드 있음)'], ['메일', 'mock ⬜ SES 계획'], ['이벤트', 'file 🟡 · Firehose 코드 있음']] },
   { id: 'caddy', x: 560, y: 64, w: 340, h: 50, fill: '--card', t: 'Caddy', s: '리버스 프록시 → api:3000 · 앱 웹', st: 'part',
     d: 'EC2 앞단 리버스 프록시. API와 앱 웹 베타(정적 파일)를 같은 사이트의 두 이름으로 준다(자동 TLS).', k: [] },
-  { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 166개', key: 'src/', st: 'ok',
+  { id: 'api', x: 560, y: 150, w: 340, h: 120, fill: '--sky', t: 'API', s: 'NestJS 11 · TypeScript · 엔드포인트 180개', key: 'src/', st: 'ok',
     d: '모든 비즈니스 규칙의 한 곳. 인증(ES256)·검증(zod)·멱등 키·요청 한도, 목소리·동화·결제·재생·학습, 작업 큐 등록, Worker 결과 검증(sha256). 녹음·음성 파일은 직접 받지 않고 S3 서명 URL을 내준다. 개발 API는 그림 주소를 요청 주소로 만들고, 그림 파일은 S3 content 버킷 서명 URL로 넘긴다(302).',
     k: [['저장소', 'doran-doran src/ (모듈 22개)'], ['로컬', 'PORT=3100 · npm run dev:restart'], ['문서', 'docs/api-spec.md · docs/architecture.md']] },
   { id: 'disp', x: 560, y: 310, w: 340, h: 76, fill: '--sky', t: '디스패처', s: '별도 프로세스 · 2초마다 · 1시간마다 정리', key: 'src/dispatcher', st: 'ok',
@@ -201,9 +201,9 @@ const N = [
     k: [['2초마다', '① 90초 넘게 소식 없는 작업 실패 처리 ② 대기 작업 최대 5개 가져가 Modal에 맡기기(POST /submit, 서명) ③ 10초가 지났으면 맡긴 작업 확인(GET /result)'],
         ['콜백', '디스패처 → API POST /internal/gpu/callback (HMAC 서명, ±5분)'],
         ['재시도', '30초 → 2분 → 8분, 3번 실패하면 dead'],
-        ['1시간마다 정리', '삭제 예약 파일 S3에서 영구 삭제 · 탈퇴 30일 지난 회원 개인정보 지우기 · 지운 목소리의 클립 · 만료 이용권 · 24시간 지난 멱등 키 · 만료 30일 지난 로그인 토큰 · 1년 지난 스튜디오 회원 음성 접근 기록 · 1일 넘게 등록 안 된 녹음 업로드 · 보내지 않은 아이 답 업로드 · 웹 결제 대사(승인 응답을 잃은 주문을 PG로 다시 보고 정산) · 이벤트 다시 보내기 · 큐가 10분 넘게 밀리면 경고'],
+        ['1시간마다 정리', '삭제 예약 파일 S3에서 영구 삭제 · 탈퇴 30일 지난 회원 개인정보 지우기 · 지운 목소리의 클립 · 만료 이용권 · 24시간 지난 멱등 키 · 만료 30일 지난 로그인 토큰 · 1년 지난 스튜디오 회원 음성 접근 기록 · 1일 넘게 등록 안 된 녹음 업로드 · 1일 넘게 후보로 등록 안 된 스튜디오 문장 음성 올리기 · 보내지 않은 아이 답 업로드 · 웹 결제 대사(승인 응답을 잃은 주문을 PG로 다시 보고 정산) · 이벤트 다시 보내기 · 큐가 10분 넘게 밀리면 경고'],
         ['GPU 경로', 'GPU_INFERENCE_PROVIDER=modal (모델 family → Modal 앱)']] },
-  { id: 'db', x: 560, y: 420, w: 225, h: 96, fill: '--pink', t: 'MariaDB 11.8', s: '회원·목소리·작업 큐·결제·학습', key: 'migrations 001–023', st: 'ok',
+  { id: 'db', x: 560, y: 420, w: 225, h: 96, fill: '--pink', t: 'MariaDB 11.8', s: '회원·목소리·작업 큐·결제·학습', key: 'migrations 001–026', st: 'ok',
     d: '서비스 상태와 작업 큐(voice_jobs)를 함께 둔다(ORM 없이 SQL). 마이그레이션 머리말에 되돌리는 SQL. 동화 숨김은 stories.status=archived.', k: [['로컬', 'Docker doran-doran-mariadb-1 (53306)'], ['백업', 'npm run db:backup · 배포 때 자동']] },
   { id: 'job', x: 800, y: 420, w: 100, h: 96, fill: '--card', t: '배치 작업', s: '필요할 때만', key: '실행 후 삭제', st: 'ok',
     d: '서버에 늘 떠 있는 프로세스가 아니라, 데이터 작업이 필요할 때 API와 같은 이미지로 잠깐 띄우고 끝나면 지우는 컨테이너(docker run --rm). EC2 안에서 돌아 서버 DB·S3를 그대로 쓴다.',
@@ -219,15 +219,15 @@ const N = [
         ['왜 필요한가 ④', '분 단위로 걸리는 작업(음원 자르기·대량 업로드)을 API 요청 처리와 떼어 놓는다 — API가 느려지지 않게'],
         ['실행', '(서버에서 docker build --target build -t doran-api:build . 뒤) docker run --rm --network doran_default --env-file deploy/.env -e DATABASE_URL=… doran-api:build npx tsx scripts/<작업>.ts']] },
   { id: 'qwen', x: 1015, y: 82, w: 210, h: 62, fill: '--mint', t: '읽어 주는 목소리', s: 'Qwen3-TTS 1.7B · 기본 모델', key: 'doran-voice-worker-qwen3_tts', st: 'ok',
-    d: '부모 녹음(전사 포함)을 참조로 글을 직접 읽는다. 선택 전 기본 모델. 장면의 문장을 한 번에 읽고(synthesis_unit=scene, 300자까지) 조용한 지점에서 문장 조각으로 나눈다 — 문장마다 따로 만들면 문장 끝이 잘린다.', k: [['입력', '참조 녹음 + 장면 묶음(unit)'], ['출력', '문장 오디오 · 전체 오디오 · 타임라인']] },
+    d: '부모 녹음(전사 포함)을 참조로 글을 직접 읽는다. 선택 전 기본 모델. 장면의 문장을 한 번에 읽고(synthesis_unit=scene, 300자까지) 말이 있는 구간의 조용한 지점에서 문장 조각으로 나눈다 — 문장마다 따로 만들면 문장 끝이 잘린다.', k: [['입력', '참조 녹음 + 장면 묶음(unit)'], ['출력', '문장 오디오 · 전체 오디오 · 타임라인']] },
   { id: 'svc', x: 1015, y: 158, w: 210, h: 62, fill: '--mint', t: '성우 낭독에 내 음색', s: 'Seed-VC V2 · 음성 변환', key: 'doran-voice-worker-seed_vc', st: 'ok',
     d: '성우 낭독(녹음)의 문장 오디오를 부모 음색으로 바꾼다. 성우 녹음이 있는 동화(8편)에서만. 출력은 클리핑 전에 음량을 맞춘다.', k: [['입력', '문장별 source_audio_url + 부모 참조'], ['대체', '낭독 없는 동화는 기본 모델로']] },
   { id: 'stt', x: 1015, y: 234, w: 210, h: 62, fill: '--mint', t: '받아쓰기', s: 'faster-whisper large-v3 · 작업 transcribe', key: 'doran-voice-worker-whisper', st: 'ok',
-    d: '성우 녹음을 글로 받아쓰면서 단어마다 시작·끝 시간(초)도 함께 받는다(word_timestamps). 이 시간으로 문장 경계를 정해 녹음을 문장별로 자르고, 앱 자막이 단어를 하나씩 켜는 {w, s, e}(ms)를 만든다. 11-09부터 작업 종류 transcribe — voice_jobs → 디스패처 → Modal(T4) → S3, 콜백이 sha256을 확인해 narrations(또는 스튜디오 자산)에 기록한다. 일회성 앱 doran-stt·narration:transcribe 스크립트는 지웠다. 기계로 만든 음성의 단어 시간은 받아쓰기가 아니라 글자 수 비례로 나눈다.',
+    d: '성우 녹음을 글로 받아쓰면서 단어마다 시작·끝 시간(초)도 함께 받는다(word_timestamps). 이 시간으로 문장 경계를 정해 녹음을 문장별로 자르고, 앱 자막이 단어를 하나씩 켜는 {w, s, e}(ms)를 만든다. 11-09부터 작업 종류 transcribe — voice_jobs → 디스패처 → Modal(T4) → S3, 콜백이 sha256을 확인해 narrations(또는 스튜디오 자산)에 기록한다. 일회성 앱 doran-stt·narration:transcribe 스크립트는 지웠다. 기계로 만든 음성의 단어 시간은 받아쓰기가 아니라 글자 수 비례로 나눈다. 11-14부터 스튜디오 한꺼번에 녹음(대상 take_split)도 같은 작업 — 결과를 원고 문장 글에 글자 단위로 맞춰 문장마다 자르고 CER로 검사한다(이슈 133).',
     k: [['결과 예', '{"word": "옛날", "start": 1.20, "end": 1.58}'], ['실측', 'ko-1(6분 25초) GPU 34초 · 제출→완료 47초'], ['결과', 'S3 content/narration/stt/{narration}/{job}-a{attempt}/{item}.json · studio/stt/{asset}/{revision}/{job}-a{attempt}.json']] },
   { id: 'beep', x: 1015, y: 310, w: 210, h: 46, fill: '--card', t: 'beep', s: '파이프라인 점검용 · 테스트 전용 엔진', st: 'ok',
     d: '글 길이만큼 신호음을 내는 가짜 엔진. GPU·모델 없이 빠르고 늘 같은 결과라, 큐 → 디스패처 → Modal → S3 → 콜백 전체 경로가 도는지 점검하고 E2E·Worker 테스트를 돌릴 때 쓴다(작업당 $0.001 미만). 부모의 모델 고르기 화면에는 나오지 않는다.',
-    k: [['필요한가', '필요 — 테스트·배관 점검용. 사용자 기능은 아니다'], ['남은 구멍', 'API가 모델 id만 알면 beep도 고를 수 있게 받아 준다 (tasks.md)']] },
+    k: [['필요한가', '필요 — 테스트·배관 점검용. 사용자 기능은 아니다'], ['부모 경로', '못 고르고 못 쓴다 — 부모에게 열린 가족은 qwen3-tts·seed-vc-v2뿐(PARENT_FAMILIES, 이슈 032·117). 스튜디오·관리자·테스트만 쓴다']] },
   // 계획(⬜): 지금은 없지만 필요한 것 — 팀원 목표 구성안·docs/infrastructure.md에서 가져옴
   { id: 'img', x: 1015, y: 380, w: 210, h: 58, fill: '--card', t: '그림 엔진', s: 'ComfyUI · FLUX 3 Klein · 작업 image', key: 'doran-voice-worker-comfy_flux', st: 'todo',
     d: '스튜디오 초기 버전이 쓰던 엔진이 맞다 — ComfyUI 포크(doran-doran-image-engine)로, 스튜디오가 개발자 GPU PC에서 FLUX klein(+Qwen3-VL 인코더)으로 표지·장면 후보를 만들었다. 11-09에 Modal 앱 doran-voice-worker-comfy_flux(L4, 동시 1대, 유휴 120초)와 작업 종류 image를 만들었지만, 가중치(Hugging Face 게이트 저장소)를 아직 볼륨에 받지 못해 실제 그림 생성은 확인 전이다. 지금 녹음 동화 8편의 그림(표지 8·커다란 순무 장면 10)은 Figma AI로 만들어 S3 content 버킷 images/{slug}/에 올리고 배치 작업(attach-images)으로 DB에 연결했다.',
